@@ -46,6 +46,7 @@ class Resolver {
         phpClasses = phpClasses.concat(this.getFromFunctionParameters(text));
         phpClasses = phpClasses.concat(this.getInitializedWithNew(text));
         phpClasses = phpClasses.concat(this.getFromStaticCalls(text));
+        phpClasses = phpClasses.concat(this.getFromInstanceofOperator(text));
 
         return phpClasses.filter((v, i, a) => a.indexOf(v) === i);
     }
@@ -97,6 +98,18 @@ class Resolver {
 
     getFromStaticCalls(text) {
         let regex = /([A-Z][A-Za-z0-9\-\_]*)::/gm;
+        let matches = [];
+        let phpClasses = [];
+
+        while (matches = regex.exec(text)) {
+            phpClasses.push(matches[1]);
+        }
+
+        return phpClasses;
+    }
+
+    getFromInstanceofOperator(text) {
+        let regex = /instanceof ([A-Z_][A-Za-z0-9\_]*)/gm;
         let matches = [];
         let phpClasses = [];
 
