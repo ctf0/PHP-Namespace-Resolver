@@ -120,103 +120,6 @@ class Resolver {
         return phpClasses
     }
 
-    async highlightNotImported() {
-        let text = this.activeEditor().document.getText()
-        let phpClasses = this.getPhpClasses(text)
-        let importedPhpClasses = this.getImportedPhpClasses(text)
-
-        // Get phpClasses not present in importedPhpClasses
-        let notImported = phpClasses.filter(function (phpClass) {
-            return !importedPhpClasses.includes(phpClass)
-        })
-
-        // Highlight diff
-        let matches = []
-        let decorationOptions = []
-
-        for (let i = 0; i < notImported.length; i++) {
-            let regex = new RegExp(notImported[i], 'g')
-
-            while (matches = regex.exec(text)) {
-                let startPos = this.activeEditor().document.positionAt(matches.index)
-
-                // as js does not support regex look behinds we get results
-                // where the object name is in the middle of a string
-                // we should drop those
-                let textLine        = this.activeEditor().document.lineAt(startPos)
-                let charBeforeMatch = textLine.text.charAt(startPos.character - 1)
-
-                if (!/\w/.test(charBeforeMatch) && textLine.text.search(/namespace/) == -1) {
-                    let endPos = this.activeEditor().document.positionAt(matches.index + matches[0].length)
-
-                    decorationOptions.push({
-                        range        : new vscode.Range(startPos, endPos),
-                        hoverMessage : 'Class is not imported.'
-                    })
-                }
-            }
-        }
-
-        // TODO have these in settings
-        let decorationType = vscode.window.createTextEditorDecorationType({
-            backgroundColor : 'rgba(255,155,0, 0.5)',
-            light           : {
-                borderColor: 'darkblue'
-            },
-            dark: {
-                borderColor: 'lightblue'
-            }
-        })
-
-        this.activeEditor().setDecorations(decorationType, decorationOptions)
-    }
-
-    async highlightNotUsed() {
-        const text = this.activeEditor().document.getText()
-        const phpClasses = this.getPhpClasses(text)
-        const importedPhpClasses = this.getImportedPhpClasses(text)
-
-        // Get phpClasses not present in importedPhpClasses
-        let notUsed = importedPhpClasses.filter(function (phpClass) {
-            return !phpClasses.includes(phpClass)
-        })
-
-        // Highlight diff
-        let matches = []
-        let decorationOptions = []
-
-        for (let i = 0; i < notUsed.length; i++) {
-            let regex = new RegExp(notUsed[i], 'g')
-
-            while (matches = regex.exec(text)) {
-                let startPos = this.activeEditor().document.positionAt(matches.index)
-                let textLine = this.activeEditor().document.lineAt(startPos)
-
-                if (textLine.text.search(/use/) != -1) {
-                    let endPos = this.activeEditor().document.positionAt(matches.index + matches[0].length)
-
-                    decorationOptions.push({
-                        range        : new vscode.Range(startPos, endPos),
-                        hoverMessage : 'Class is not used.'
-                    })
-                }
-            }
-        }
-
-        // TODO have these in settings
-        const decorationType = vscode.window.createTextEditorDecorationType({
-            backgroundColor : 'rgba(255,55,55, 0.5)',
-            light           : {
-                borderColor: 'darkblue'
-            },
-            dark: {
-                borderColor: 'lightblue'
-            }
-        })
-
-        this.activeEditor().setDecorations(decorationType, decorationOptions)
-    }
-
     getImportedPhpClasses(text) {
         let regex = /use (.*);/gm
         let matches = []
@@ -604,10 +507,6 @@ class Resolver {
         return this.activeEditor().document.getText(wordRange)
     }
 
-    config(key) {
-        return vscode.workspace.getConfiguration('namespaceResolver').get(key)
-    }
-
     showMessage(message, error = false) {
         if (this.config('showMessageOnStatusBar')) {
             return vscode.window.setStatusBarMessage(message, 3000)
@@ -630,14 +529,21 @@ class Resolver {
         let currentUri = this.activeEditor().document.uri
         let currentFile = currentUri.path
         let currentPath = currentFile.substr(0, currentFile.lastIndexOf('/'))
-        let composerFile = await vscode.workspace.findFiles('**/composer.json')
-        let projectFolder = await vscode.workspace.getWorkspaceFolder(currentUri)
+        let workspaceFolder = vscode.workspace.getWorkspaceFolder(currentUri)
 
-        if (projectFolder === undefined) {
-            return this.showErrorMessage('No project folder found, automatic namespace generation failed')
+        if (workspaceFolder === undefined) {
+            return this.showErrorMessage('No folder openned in workspace, cannot find composer.json')
         }
 
-        let projectPath = projectFolder.uri.path
+        // try to retrieve composer file by searching recursively into parent folders of the current file
+
+        let composerFile
+        let composerPath = currentFile
+
+        do {
+            composerPath = composerPath.substr(0, composerPath.lastIndexOf('/'))
+            composerFile = await vscode.workspace.findFiles(new vscode.RelativePattern(composerPath, 'composer.json'))
+        } while (!composerFile.length && composerPath !== workspaceFolder.uri.path)
 
         if (!composerFile.length) {
             return this.showErrorMessage('No composer.json file found, automatic namespace generation failed')
@@ -645,59 +551,97 @@ class Resolver {
 
         composerFile = composerFile.pop().path
 
-        vscode.workspace.openTextDocument(composerFile).then((document) => {
-            let composerJson = JSON.parse(document.getText())
-            let psr4 = (composerJson.autoload || {})['psr-4']
+        vscode.workspace.openTextDocument(composerFile)
+            .then((document) => {
+                let composerJson = JSON.parse(document.getText())
+                let psr4         = (composerJson.autoload || {})['psr-4']
 
-            if (psr4 === undefined) {
-                return this.showErrorMessage('No psr-4 key in composer.json autoload object, automatic namespace generation failed')
-            }
+                if (psr4 === undefined) {
+                    return this.showErrorMessage('No psr-4 key in composer.json autoload object, automatic namespace generation failed')
+                }
 
-            let devPsr4 = (composerJson['autoload-dev'] || {})['psr-4']
+                let devPsr4 = (composerJson['autoload-dev'] || {})['psr-4']
 
-            if (devPsr4 !== undefined) {
-                psr4 = {...psr4, ...devPsr4}
-            }
+                if (devPsr4 !== undefined) {
+                    psr4 = {...psr4, ...devPsr4}
+                }
 
-            let currentRelativePath = currentPath.split(projectPath)[1]
+                let currentRelativePath = currentPath.split(composerPath)[1]
 
-            let namespaceBase = Object.keys(psr4).filter(function (namespaceBase) {
-                return currentRelativePath.split(psr4[namespaceBase])[1]
-            }).concat(Object.keys(psr4))[0]
+                // this is a way to always match with psr-4 entries
+                if (!currentRelativePath.endsWith('/')) {
+                    currentRelativePath += '/'
+                }
 
-            let baseDir = psr4[namespaceBase]
+                let namespaceBase = Object.keys(psr4)
+                    .filter( (namespaceBase) => currentRelativePath.lastIndexOf(psr4[namespaceBase]) !== -1)[0]
 
-            namespaceBase = namespaceBase.replace(/\\$/, '')
+                let baseDir = psr4[namespaceBase]
 
-            let namespace = currentRelativePath.split(baseDir)
+                namespaceBase = namespaceBase.replace(/\\$/, '')
 
-            if (namespace[1]) {
-                namespace = namespace[1]
-                namespace = namespace.replace(/\//g, '\\')
-                namespace = namespace.replace(/^\\/, '')
-                namespace = namespaceBase + '\\' + namespace
-            } else {
-                namespace = namespaceBase
-            }
+                let namespace = currentPath.substring(
+                    currentPath.lastIndexOf(baseDir) + baseDir.length
+                )
 
-            namespace = 'namespace ' + namespace + ';' + '\n'
+                if (namespace !== '') {
+                    namespace = namespace
+                        .replace(/\//g, '\\')
+                        .replace(/^\\/, '')
+                        .replace(/\\$/, '')
 
-            let declarationLines
+                    namespace = namespaceBase + '\\' + namespace
+                } else {
+                    namespace = namespaceBase
+                }
 
-            try {
-                [, declarationLines] = this.getDeclarations()
-            } catch (error) {
-                return this.showErrorMessage(error.message)
-            }
+                currentRelativePath = currentRelativePath
+                    .replace(/\/$/, '')
+                    .replace(/\//g, '\\')
 
-            if (declarationLines.namespace !== null) {
-                this.replaceNamespaceStatement(namespace, declarationLines.namespace)
-            } else {
-                this.activeEditor().edit((textEdit) => {
-                    textEdit.insert(new vscode.Position(3, 0), namespace) + textEdit.insert(new vscode.Position(4, 0), '')
-                })
-            }
-        })
+                // check if the parent path is the same as the resolved namespace
+                let ns = '\\' + namespace.toLowerCase() == currentRelativePath.toLowerCase()
+                    ? namespace
+                    : namespace + currentRelativePath
+
+                namespace = '\n' + 'namespace ' + ns + ';' + '\n'
+
+                let declarationLines
+
+                try {
+                    [, declarationLines] = this.getDeclarations()
+                } catch (error) {
+                    return this.showErrorMessage(error.message)
+                }
+
+                if (declarationLines.namespace !== null) {
+                    this.replaceNamespaceStatement(namespace, declarationLines.namespace)
+                } else {
+                    this.activeEditor().edit((textEdit) => {
+                        textEdit.insert(new vscode.Position(1, 0), namespace)
+                    })
+                }
+            })
+    }
+
+    async import() {
+        let selections = this.activeEditor().selections
+
+        for (let i = 0; i < selections.length; i++) {
+            await this.importCommand(selections[i])
+        }
+    }
+
+    async expand() {
+        let selections = this.activeEditor().selections
+
+        for (let i = 0; i < selections.length; i++) {
+            await this.expandCommand(selections[i])
+        }
+    }
+
+    config(key) {
+        return vscode.workspace.getConfiguration('namespaceResolver').get(key)
     }
 }
 
