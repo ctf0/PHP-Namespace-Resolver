@@ -2,7 +2,7 @@
     "name": "php-namespace-resolver",
     "displayName": "PHP Namespace Resolver",
     "description": "Import and expand php namespaces",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "publisher": "ctf0",
     "author": "ctf0",
     "license": "SEE LICENSE IN LICENSE",
@@ -34,81 +34,6 @@
     "main": "./src/extension",
     "icon": "images/icon.png",
     "contributes": {
-        "menus": {
-            "editor/context": [
-                {
-                    "when": "resourceLangId == php",
-                    "command": "namespaceResolver.import",
-                    "alt": "namespaceResolver.import",
-                    "group": "0_namespace_resolver@1"
-                },
-                {
-                    "when": "resourceLangId == php",
-                    "command": "namespaceResolver.importAll",
-                    "alt": "namespaceResolver.importAll",
-                    "group": "0_namespace_resolver@2"
-                },
-                {
-                    "when": "resourceLangId == php",
-                    "command": "namespaceResolver.expand",
-                    "alt": "namespaceResolver.expand",
-                    "group": "0_namespace_resolver@3"
-                },
-                {
-                    "when": "resourceLangId == php",
-                    "command": "namespaceResolver.sort",
-                    "alt": "namespaceResolver.sort",
-                    "group": "0_namespace_resolver@4"
-                },
-                {
-                    "when": "resourceLangId == php",
-                    "command": "namespaceResolver.generateNamespace",
-                    "alt": "namespaceResolver.generateNamespace",
-                    "group": "0_namespace_resolver@7"
-                }
-            ]
-        },
-        "configuration": {
-            "type": "object",
-            "title": "PHP Namespace Resolver extension configuration",
-            "properties": {
-                "namespaceResolver.exclude": {
-                    "type": "string",
-                    "default": "**/node_modules/**",
-                    "description": "Exclude glob pattern while finding files"
-                },
-                "namespaceResolver.showMessageOnStatusBar": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Show message on status bar instead of notification box"
-                },
-                "namespaceResolver.autoSort": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Auto sort after imports"
-                },
-                "namespaceResolver.sortOnSave": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Auto sort when a file is saved"
-                },
-                "namespaceResolver.sortAlphabetically": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Sort imports in alphabetical order instead of line length"
-                },
-                "namespaceResolver.sortNatural": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Sort imports using a 'natural order' algorithm"
-                },
-                "namespaceResolver.leadingSeparator": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Expand class with leading namespace separator"
-                }
-            }
-        },
         "commands": [
             {
                 "title": "Import Class",
@@ -157,7 +82,77 @@
                 "key": "ctrl+alt+g",
                 "when": "editorTextFocus"
             }
-        ]
+        ],
+        "menus": {
+            "editor/context": [
+                {
+                    "when": "resourceLangId == php",
+                    "command": "namespaceResolver.import",
+                    "group": "0_namespace_resolver@1"
+                },
+                {
+                    "when": "resourceLangId == php",
+                    "command": "namespaceResolver.importAll",
+                    "group": "0_namespace_resolver@2"
+                },
+                {
+                    "when": "resourceLangId == php",
+                    "command": "namespaceResolver.expand",
+                    "group": "0_namespace_resolver@3"
+                },
+                {
+                    "when": "resourceLangId == php",
+                    "command": "namespaceResolver.sort",
+                    "group": "0_namespace_resolver@4"
+                },
+                {
+                    "when": "resourceLangId == php",
+                    "command": "namespaceResolver.generateNamespace",
+                    "group": "0_namespace_resolver@7"
+                }
+            ]
+        },
+        "configuration": {
+            "type": "object",
+            "title": "PHP Namespace Resolver extension configuration",
+            "properties": {
+                "namespaceResolver.exclude": {
+                    "type": "string",
+                    "default": "**/node_modules/**",
+                    "description": "Exclude glob pattern while finding files"
+                },
+                "namespaceResolver.showMessageOnStatusBar": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Show message on status bar instead of notification box"
+                },
+                "namespaceResolver.autoSort": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Auto sort after imports"
+                },
+                "namespaceResolver.sortOnSave": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Auto sort when a file is saved"
+                },
+                "namespaceResolver.sortAlphabetically": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Sort imports in alphabetical order instead of line length"
+                },
+                "namespaceResolver.sortNatural": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Sort imports using a 'natural order' algorithm"
+                },
+                "namespaceResolver.leadingSeparator": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Expand class with leading namespace separator"
+                }
+            }
+        }
     },
     "repository": "https://github.com/ctf0/PHP-Namespace-Resolver",
     "scripts": {
