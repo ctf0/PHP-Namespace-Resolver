@@ -526,7 +526,9 @@ class Resolver {
     }
 
     async generateNamespace() {
+        let compJson = 'composer.json'
         let currentUri = this.activeEditor().document.uri
+
         let currentFile = currentUri.path
         let currentPath = currentFile.substr(0, currentFile.lastIndexOf('/'))
         let workspaceFolder = vscode.workspace.getWorkspaceFolder(currentUri)
@@ -536,13 +538,12 @@ class Resolver {
         }
 
         // try to retrieve composer file by searching recursively into parent folders of the current file
-
         let composerFile
         let composerPath = currentFile
 
         do {
             composerPath = composerPath.substr(0, composerPath.lastIndexOf('/'))
-            composerFile = await vscode.workspace.findFiles(new vscode.RelativePattern(composerPath, 'composer.json'))
+            composerFile = await vscode.workspace.findFiles(new vscode.RelativePattern(composerPath, compJson))
         } while (!composerFile.length && composerPath !== workspaceFolder.uri.path)
 
         if (!composerFile.length) {
@@ -574,37 +575,33 @@ class Resolver {
                 }
 
                 let namespaceBase = Object.keys(psr4)
-                    .filter( (namespaceBase) => currentRelativePath.lastIndexOf(psr4[namespaceBase]) !== -1)[0]
+                    .filter((namespaceBase) => currentRelativePath.lastIndexOf(psr4[namespaceBase]) !== -1)[0]
+
+                currentRelativePath = currentRelativePath.replace(/^\//g, '')
 
                 let baseDir = psr4[namespaceBase]
 
-                namespaceBase = namespaceBase.replace(/\\$/, '')
-
-                let namespace = currentPath.substring(
-                    currentPath.lastIndexOf(baseDir) + baseDir.length
-                )
-
-                if (namespace !== '') {
-                    namespace = namespace
-                        .replace(/\//g, '\\')
-                        .replace(/^\\/, '')
-                        .replace(/\\$/, '')
-
-                    namespace = namespaceBase + '\\' + namespace
+                if (baseDir == currentRelativePath) {
+                    currentRelativePath = null
                 } else {
-                    namespace = namespaceBase
+                    currentRelativePath = currentRelativePath
+                        .replace(baseDir, '')
+                        .replace(/\/$/g, '')
+                        .replace(/\//g, '\\')
                 }
 
-                currentRelativePath = currentRelativePath
-                    .replace(/\/$/, '')
-                    .replace(/\//g, '\\')
+                namespaceBase = namespaceBase.replace(/\\$/g, '')
 
-                // check if the parent path is the same as the resolved namespace
-                let ns = '\\' + namespace.toLowerCase() == currentRelativePath.toLowerCase()
-                    ? namespace
-                    : namespace + currentRelativePath
+                let ns = null
+                let lower = namespaceBase.toLowerCase()
 
-                namespace = '\n' + 'namespace ' + ns + ';' + '\n'
+                if (!currentRelativePath || currentRelativePath == lower) { // dir already namespaced
+                    ns = namespaceBase
+                } else { // add parent dir/s to base namespace
+                    ns = `${namespaceBase}\\${currentRelativePath}`
+                }
+
+                let namespace = '\n' + 'namespace ' + ns + ';' + '\n'
 
                 let declarationLines
 
