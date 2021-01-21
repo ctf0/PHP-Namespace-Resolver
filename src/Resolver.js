@@ -1,6 +1,6 @@
-let vscode = require('vscode')
+let vscode         = require('vscode')
 let builtInClasses = require('./classes')
-let naturalSort = require('node-natural-sort')
+let naturalSort    = require('node-natural-sort')
 
 class Resolver {
     regexWordWithNamespace = new RegExp(/[a-zA-Z0-9\\]+/)
@@ -9,17 +9,17 @@ class Resolver {
         let resolving = this.resolving(selection)
 
         if (resolving === undefined) {
-            return this.showErrorMessage('$(issue-opened)  No class is selected.')
+            return this.showErrorMessage('No class is selected.')
         }
 
         let fqcn
         let replaceClassAfterImport = false
 
         if (/\\/.test(resolving)) {
-            fqcn = resolving.replace(/^\\?/, '')
+            fqcn                    = resolving.replace(/^\\?/, '')
             replaceClassAfterImport = true
         } else {
-            let files = await this.findFiles(resolving)
+            let files      = await this.findFiles(resolving)
             let namespaces = await this.findNamespaces(resolving, files)
 
             fqcn = await this.pickClass(namespaces)
@@ -29,8 +29,8 @@ class Resolver {
     }
 
     async importAll() {
-        let text = this.activeEditor().document.getText()
-        let phpClasses = this.getPhpClasses(text)
+        let text          = this.activeEditor().document.getText()
+        let phpClasses    = this.getPhpClasses(text)
         let useStatements = this.getUseStatementsArray()
 
         for (let phpClass of phpClasses) {
@@ -52,8 +52,8 @@ class Resolver {
     }
 
     getExtended(text) {
-        let regex = /extends ([A-Z][A-Za-z0-9\-\_]*)/gm
-        let matches = []
+        let regex      = /extends ([A-Z][A-Za-z0-9\-\_]*)/gm
+        let matches    = []
         let phpClasses = []
 
         while (matches = regex.exec(text)) {
@@ -64,8 +64,8 @@ class Resolver {
     }
 
     getFromFunctionParameters(text) {
-        let regex = /function [\S]+\((.*)\)/gm
-        let matches = []
+        let regex      = /function [\S]+\((.*)\)/gm
+        let matches    = []
         let phpClasses = []
 
         while (matches = regex.exec(text)) {
@@ -85,8 +85,8 @@ class Resolver {
     }
 
     getInitializedWithNew(text) {
-        let regex = /new ([A-Z][A-Za-z0-9\-\_]*)/gm
-        let matches = []
+        let regex      = /new ([A-Z][A-Za-z0-9\-\_]*)/gm
+        let matches    = []
         let phpClasses = []
 
         while (matches = regex.exec(text)) {
@@ -97,8 +97,8 @@ class Resolver {
     }
 
     getFromStaticCalls(text) {
-        let regex = /([A-Z][A-Za-z0-9\-\_]*)::/gm
-        let matches = []
+        let regex      = /([A-Z][A-Za-z0-9\-\_]*)::/gm
+        let matches    = []
         let phpClasses = []
 
         while (matches = regex.exec(text)) {
@@ -109,8 +109,8 @@ class Resolver {
     }
 
     getFromInstanceofOperator(text) {
-        let regex = /instanceof ([A-Z_][A-Za-z0-9\_]*)/gm
-        let matches = []
+        let regex      = /instanceof ([A-Z_][A-Za-z0-9\_]*)/gm
+        let matches    = []
         let phpClasses = []
 
         while (matches = regex.exec(text)) {
@@ -121,8 +121,8 @@ class Resolver {
     }
 
     getImportedPhpClasses(text) {
-        let regex = /use (.*);/gm
-        let matches = []
+        let regex              = /use (.*);/gm
+        let matches            = []
         let importedPhpClasses = []
 
         while (matches = regex.exec(text)) {
@@ -181,7 +181,7 @@ class Resolver {
         }
 
         if (this.hasConflict(useStatements, alias)) {
-            this.showErrorMessage('$(issue-opened)  This alias is already in use.')
+            this.showErrorMessage('This alias is already in use.')
 
             this.insertAsAlias(selection, fqcn, useStatements, declarationLines)
         } else if (alias !== '') {
@@ -212,8 +212,8 @@ class Resolver {
 
     async replaceNamespaceStatement(namespace, line) {
         let realLine = line - 1
-        let text = this.activeEditor().document.lineAt(realLine).text
-        let newNs = text.replace(/namespace (.+)/, namespace)
+        let text     = this.activeEditor().document.lineAt(realLine).text
+        let newNs    = text.replace(/namespace (.+)/, namespace)
 
         await this.activeEditor().edit((textEdit) => {
             textEdit.replace(
@@ -233,12 +233,12 @@ class Resolver {
         let resolving = this.resolving(selection)
 
         if (resolving === null) {
-            return this.showErrorMessage('$(issue-opened)  No class is selected.')
+            return this.showErrorMessage('No class is selected.')
         }
 
-        let files = await this.findFiles(resolving)
+        let files      = await this.findFiles(resolving)
         let namespaces = await this.findNamespaces(resolving, files)
-        let fqcn = await this.pickClass(namespaces)
+        let fqcn       = await this.pickClass(namespaces)
 
         this.changeSelectedClass(selection, fqcn, true)
     }
@@ -326,7 +326,7 @@ class Resolver {
 
                 if (textLine.startsWith('namespace ') || textLine.startsWith('<?php namespace ')) {
                     let namespace = textLine.match(/^(namespace|(<\?php namespace))\s+(.+)?;/).pop()
-                    let fqcn = `${namespace}\\${resolving}`
+                    let fqcn      = `${namespace}\\${resolving}`
 
                     if (!parsedNamespaces.includes(fqcn)) {
                         parsedNamespaces.push(fqcn)
@@ -355,7 +355,7 @@ class Resolver {
         let [useStatements] = this.getDeclarations()
 
         if (useStatements.length <= 1) {
-            throw new Error('$(issue-opened)  Nothing to sort.')
+            throw new Error('PHP Namespace Resolver: Nothing to sort.')
         }
 
         let sortFunction = (a, b) => {
@@ -430,7 +430,7 @@ class Resolver {
     }
 
     getDeclarations(pickedClass = null) {
-        let useStatements = []
+        let useStatements    = []
         let declarationLines = {
             PHPTag       : 0,
             namespace    : null,
@@ -442,7 +442,7 @@ class Resolver {
             let text = this.activeEditor().document.lineAt(line).text
 
             if (pickedClass !== null && text === `use ${pickedClass};`) {
-                throw new Error('$(issue-opened)  The class is already imported.')
+                throw new Error('PHP Namespace Resolver: The class is already imported.')
             }
 
             // break if all declarations were found.
@@ -467,8 +467,8 @@ class Resolver {
     }
 
     getInsertLine(declarationLines) {
-        let prepend = declarationLines.PHPTag === 0 ? '' : '\n'
-        let append = '\n'
+        let prepend    = declarationLines.PHPTag === 0 ? '' : '\n'
+        let append     = '\n'
         let insertLine = declarationLines.PHPTag
 
         if (prepend === '' && declarationLines.namespace !== null) {
@@ -476,7 +476,7 @@ class Resolver {
         }
 
         if (declarationLines.useStatement !== null) {
-            prepend = ''
+            prepend    = ''
             insertLine = declarationLines.useStatement
         } else if (declarationLines.namespace !== null) {
             insertLine = declarationLines.namespace
@@ -522,15 +522,15 @@ class Resolver {
     }
 
     showErrorMessage(message) {
-        this.showMessage(message, true)
+        this.showMessage(`PHP Namespace Resolver: ${message}`, true)
     }
 
     async generateNamespace() {
-        let compJson = 'composer.json'
+        let compJson   = 'composer.json'
         let currentUri = this.activeEditor().document.uri
 
-        let currentFile = currentUri.path
-        let currentPath = currentFile.substr(0, currentFile.lastIndexOf('/'))
+        let currentFile     = currentUri.path
+        let currentPath     = currentFile.substr(0, currentFile.lastIndexOf('/'))
         let workspaceFolder = vscode.workspace.getWorkspaceFolder(currentUri)
 
         if (workspaceFolder === undefined) {
@@ -592,7 +592,7 @@ class Resolver {
 
                 namespaceBase = namespaceBase.replace(/\\$/g, '')
 
-                let ns = null
+                let ns    = null
                 let lower = namespaceBase.toLowerCase()
 
                 if (!currentRelativePath || currentRelativePath == lower) { // dir already namespaced
