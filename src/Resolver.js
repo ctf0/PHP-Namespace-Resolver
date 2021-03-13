@@ -522,7 +522,7 @@ class Resolver {
     }
 
     showErrorMessage(message) {
-        this.showMessage(`PHP Namespace Resolver: ${message}`, true)
+        this.showMessage(message, true)
     }
 
     async generateNamespace() {
