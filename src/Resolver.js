@@ -601,6 +601,8 @@ class Resolver {
                     ns = `${namespaceBase}\\${currentRelativePath}`
                 }
 
+                ns = ns.replace(/\\{2,}/g, '\\')
+
                 let namespace = '\n' + 'namespace ' + ns + ';' + '\n'
 
                 let declarationLines

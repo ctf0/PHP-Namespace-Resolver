@@ -18,3 +18,7 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 ## 0.0.5
 
 - fix error msgs
+
+## 0.0.7
+
+- fix double back slash in namespace
