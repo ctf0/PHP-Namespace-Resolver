@@ -514,11 +514,9 @@ class Resolver {
 
         message = message.replace(/\$\(.+?\)\s\s/, '')
 
-        if (error) {
-            vscode.window.showErrorMessage(message)
-        } else {
-            vscode.window.showInformationMessage(message)
-        }
+        error
+            ? vscode.window.showErrorMessage(`PHP Namespace Resolver: ${message}`)
+            : vscode.window.showInformationMessage(`PHP Namespace Resolver: ${message}`)
     }
 
     showErrorMessage(message) {
@@ -605,7 +603,7 @@ class Resolver {
 
                 let namespace = '\n' + 'namespace ' + ns + ';' + '\n'
 
-                let declarationLines
+                let declarationLines = {}
 
                 try {
                     [, declarationLines] = this.getDeclarations()
