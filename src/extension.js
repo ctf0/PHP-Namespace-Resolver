@@ -1,4 +1,4 @@
-let vscode = require('vscode')
+let vscode   = require('vscode')
 let Resolver = require('./Resolver')
 
 function activate(context) {
