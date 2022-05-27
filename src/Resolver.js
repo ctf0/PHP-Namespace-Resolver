@@ -520,10 +520,9 @@ class Resolver {
             if (text.startsWith('<?php')) {
                 declarationLines.PHPTag = line + 1
             } else if (
-                text.startsWith('declare') &&
-        declarationLines.declare === null
+                text.startsWith('declare')
             ) {
-                // look for first declare statement only
+                // look for last declare statement only
                 declarationLines.declare = line + 1
             } else if (
                 text.startsWith('namespace ') ||
