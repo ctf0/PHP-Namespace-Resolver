@@ -52,7 +52,7 @@ class Resolver {
     }
 
     getExtended(text) {
-        let regex      = /extends ([A-Z][A-Za-z0-9\-\_]*)/gm
+        let regex      = /extends ([A-Z][A-Za-z0-9\-_]*)/gm
         let matches    = []
         let phpClasses = []
 
@@ -85,7 +85,7 @@ class Resolver {
     }
 
     getInitializedWithNew(text) {
-        let regex      = /new ([A-Z][A-Za-z0-9\-\_]*)/gm
+        let regex      = /new ([A-Z][A-Za-z0-9\-_]*)/gm
         let matches    = []
         let phpClasses = []
 
@@ -97,7 +97,7 @@ class Resolver {
     }
 
     getFromStaticCalls(text) {
-        let regex      = /([A-Z][A-Za-z0-9\-\_]*)::/gm
+        let regex      = /([A-Z][A-Za-z0-9\-_]*)::/gm
         let matches    = []
         let phpClasses = []
 
@@ -433,6 +433,7 @@ class Resolver {
         let useStatements    = []
         let declarationLines = {
             PHPTag       : 0,
+            declare      : null,
             namespace    : null,
             useStatement : null,
             class        : null
@@ -446,13 +447,21 @@ class Resolver {
             }
 
             // break if all declarations were found.
-            if (declarationLines.PHPTag && declarationLines.namespace &&
-                declarationLines.useStatement && declarationLines.class) {
+            if (
+                declarationLines.PHPTag &&
+                declarationLines.declare &&
+                declarationLines.namespace &&
+                declarationLines.useStatement &&
+                declarationLines.class
+            ) {
                 break
             }
 
             if (text.startsWith('<?php')) {
                 declarationLines.PHPTag = line + 1
+            } else if (text.startsWith('declare')) {
+                // look for last declare statement only
+                declarationLines.declare = line + 1
             } else if (text.startsWith('namespace ') || text.startsWith('<?php namespace')) {
                 declarationLines.namespace = line + 1
             } else if (text.startsWith('use ')) {
@@ -483,9 +492,9 @@ class Resolver {
         }
 
         if (declarationLines.class !== null &&
-            ((declarationLines.class - declarationLines.useStatement) <= 1 ||
-            (declarationLines.class - declarationLines.namespace) <= 1 ||
-            (declarationLines.class - declarationLines.PHPTag) <= 1)
+            ((declarationLines.class - declarationLines.useStatement) <= 1) ||
+            ((declarationLines.class - declarationLines.namespace) <= 1) ||
+            ((declarationLines.class - declarationLines.PHPTag) <= 1)
         ) {
             append = '\n\n'
         }
@@ -611,11 +620,20 @@ class Resolver {
                     return this.showErrorMessage(error.message)
                 }
 
-                if (declarationLines.namespace !== null) {
-                    this.replaceNamespaceStatement(namespace, declarationLines.namespace)
+                 if (declarationLines.namespace !== null) {
+                    this.replaceNamespaceStatement(
+                        namespace,
+                        declarationLines.namespace
+                    )
                 } else {
                     this.activeEditor().edit((textEdit) => {
-                        textEdit.insert(new vscode.Position(1, 0), namespace)
+                        let line = 1
+
+                        if (declarationLines.declare !== null) {
+                            line = declarationLines.declare
+                        }
+
+                        textEdit.insert(new vscode.Position(line, 0), namespace)
                     })
                 }
             })
