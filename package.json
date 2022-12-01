@@ -2,7 +2,7 @@
     "name": "php-namespace-resolver",
     "displayName": "PHP Namespace Resolver",
     "description": "Import and expand php namespaces",
-    "version": "0.0.9",
+    "version": "0.1.0",
     "publisher": "ctf0",
     "author": "ctf0",
     "license": "SEE LICENSE IN LICENSE",
@@ -60,27 +60,27 @@
             {
                 "command": "namespaceResolver.import",
                 "key": "ctrl+alt+i",
-                "when": "editorTextFocus"
+                "when": "editorTextFocus && editorLangId == php"
             },
             {
                 "command": "namespaceResolver.importAll",
                 "key": "ctrl+alt+a",
-                "when": "editorTextFocus"
+                "when": "editorTextFocus && editorLangId == php"
             },
             {
                 "command": "namespaceResolver.expand",
                 "key": "ctrl+alt+e",
-                "when": "editorTextFocus"
+                "when": "editorTextFocus && editorLangId == php"
             },
             {
                 "command": "namespaceResolver.sort",
                 "key": "ctrl+alt+s",
-                "when": "editorTextFocus"
+                "when": "editorTextFocus && editorLangId == php"
             },
             {
                 "command": "namespaceResolver.generateNamespace",
                 "key": "ctrl+alt+g",
-                "when": "editorTextFocus"
+                "when": "editorTextFocus && editorLangId == php"
             }
         ],
         "menus": {
@@ -113,8 +113,24 @@
             ],
             "commandPalette": [
                 {
-                    "when": "resourceLangId == php && editorIsOpen",
-                    "command": "namespaceResolver.generateNamespace"
+                    "command": "namespaceResolver.import",
+                    "when": "editorTextFocus && editorLangId == php"
+                },
+                {
+                    "command": "namespaceResolver.importAll",
+                    "when": "editorTextFocus && editorLangId == php"
+                },
+                {
+                    "command": "namespaceResolver.expand",
+                    "when": "editorTextFocus && editorLangId == php"
+                },
+                {
+                    "command": "namespaceResolver.sort",
+                    "when": "editorTextFocus && editorLangId == php"
+                },
+                {
+                    "command": "namespaceResolver.generateNamespace",
+                    "when": "editorTextFocus && editorLangId == php"
                 }
             ]
         },

@@ -26,3 +26,7 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 ## 0.0.9
 
 - [fix Insert namespace before declare statements](https://github.com/ctf0/PHP-Namespace-Resolver/pull/10)
+
+## 0.1.0
+
+- make sure the command panel entries only shows up in php files
