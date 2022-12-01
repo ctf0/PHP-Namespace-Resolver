@@ -489,15 +489,17 @@ class Resolver {
             insertLine = declarationLines.useStatement
         } else if (declarationLines.namespace !== null) {
             insertLine = declarationLines.namespace
+        } else if (declarationLines.declare !== null) {
+            insertLine = declarationLines.declare
         }
 
-        if (declarationLines.class !== null &&
-            ((declarationLines.class - declarationLines.useStatement) <= 1) ||
-            ((declarationLines.class - declarationLines.namespace) <= 1) ||
-            ((declarationLines.class - declarationLines.PHPTag) <= 1)
-        ) {
-            append = '\n\n'
-        }
+        // if (declarationLines.class !== null &&
+        //     ((declarationLines.class - declarationLines.useStatement) <= 1) ||
+        //     ((declarationLines.class - declarationLines.namespace) <= 1) ||
+        //     ((declarationLines.class - declarationLines.PHPTag) <= 1)
+        // ) {
+        //     append = '\n\n'
+        // }
 
         return [prepend, append, insertLine]
     }
@@ -537,7 +539,7 @@ class Resolver {
         let currentUri = this.activeEditor().document.uri
 
         let currentFile     = currentUri.path
-        let currentPath     = currentFile.substr(0, currentFile.lastIndexOf('/'))
+        let currentPath     = currentFile.substring(0, currentFile.lastIndexOf('/'))
         let workspaceFolder = vscode.workspace.getWorkspaceFolder(currentUri)
 
         if (workspaceFolder === undefined) {
@@ -549,7 +551,7 @@ class Resolver {
         let composerPath = currentFile
 
         do {
-            composerPath = composerPath.substr(0, composerPath.lastIndexOf('/'))
+            composerPath = composerPath.substring(0, composerPath.lastIndexOf('/'))
             composerFile = await vscode.workspace.findFiles(new vscode.RelativePattern(composerPath, compJson))
         } while (!composerFile.length && composerPath !== workspaceFolder.uri.path)
 

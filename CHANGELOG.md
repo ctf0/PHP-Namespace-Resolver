@@ -30,3 +30,7 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 ## 0.1.0
 
 - make sure the command panel entries only shows up in php files
+
+## 0.1.2
+
+- fix import class before declare statements
