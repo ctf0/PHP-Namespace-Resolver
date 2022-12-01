@@ -2,7 +2,7 @@
     "name": "php-namespace-resolver",
     "displayName": "PHP Namespace Resolver",
     "description": "Import and expand php namespaces",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "publisher": "ctf0",
     "author": "ctf0",
     "license": "SEE LICENSE IN LICENSE",
@@ -37,76 +37,81 @@
         "commands": [
             {
                 "title": "Import Class",
-                "command": "namespaceResolver.import"
+                "command": "namespaceResolver.import",
+                "category": "PHP Namespace Resolver"
             },
             {
                 "title": "Import All Classes",
-                "command": "namespaceResolver.importAll"
+                "command": "namespaceResolver.importAll",
+                "category": "PHP Namespace Resolver"
             },
             {
                 "title": "Expand Class",
-                "command": "namespaceResolver.expand"
+                "command": "namespaceResolver.expand",
+                "category": "PHP Namespace Resolver"
             },
             {
                 "title": "Sort Imports",
-                "command": "namespaceResolver.sort"
+                "command": "namespaceResolver.sort",
+                "category": "PHP Namespace Resolver"
             },
             {
                 "title": "Generate namespace for this file",
-                "command": "namespaceResolver.generateNamespace"
+                "command": "namespaceResolver.generateNamespace",
+                "category": "PHP Namespace Resolver"
             }
         ],
         "keybindings": [
             {
                 "command": "namespaceResolver.import",
                 "key": "ctrl+alt+i",
-                "when": "editorTextFocus && editorLangId == php"
+                "when": "editorLangId == php"
             },
             {
                 "command": "namespaceResolver.importAll",
                 "key": "ctrl+alt+a",
-                "when": "editorTextFocus && editorLangId == php"
+                "when": "editorLangId == php"
             },
             {
                 "command": "namespaceResolver.expand",
                 "key": "ctrl+alt+e",
-                "when": "editorTextFocus && editorLangId == php"
+                "when": "editorLangId == php"
             },
             {
                 "command": "namespaceResolver.sort",
                 "key": "ctrl+alt+s",
-                "when": "editorTextFocus && editorLangId == php"
+                "when": "editorLangId == php"
             },
             {
                 "command": "namespaceResolver.generateNamespace",
                 "key": "ctrl+alt+g",
-                "when": "editorTextFocus && editorLangId == php"
+                "when": "editorLangId == php"
             }
         ],
         "menus": {
             "editor/context": [
                 {
-                    "when": "resourceLangId == php",
+                    "when": "editorLangId == php",
                     "command": "namespaceResolver.import",
                     "group": "0_namespace_resolver@1"
                 },
                 {
-                    "when": "resourceLangId == php",
+                    "when": "editorLangId == php",
                     "command": "namespaceResolver.importAll",
                     "group": "0_namespace_resolver@2"
                 },
                 {
-                    "when": "resourceLangId == php",
+                    "when": "editorLangId == php",
                     "command": "namespaceResolver.expand",
                     "group": "0_namespace_resolver@3"
                 },
                 {
-                    "when": "resourceLangId == php",
+                    "when": "editorLangId == php",
                     "command": "namespaceResolver.sort",
                     "group": "0_namespace_resolver@4"
                 },
                 {
-                    "when": "resourceLangId == php",
+                    "when": "editorLangId == php",
                     "command": "namespaceResolver.generateNamespace",
                     "group": "0_namespace_resolver@7"
                 }
@@ -114,23 +119,23 @@
             "commandPalette": [
                 {
                     "command": "namespaceResolver.import",
-                    "when": "editorTextFocus && editorLangId == php"
+                    "when": "editorLangId == php"
                 },
                 {
                     "command": "namespaceResolver.importAll",
-                    "when": "editorTextFocus && editorLangId == php"
+                    "when": "editorLangId == php"
                 },
                 {
                     "command": "namespaceResolver.expand",
-                    "when": "editorTextFocus && editorLangId == php"
+                    "when": "editorLangId == php"
                 },
                 {
                     "command": "namespaceResolver.sort",
-                    "when": "editorTextFocus && editorLangId == php"
+                    "when": "editorLangId == php"
                 },
                 {
                     "command": "namespaceResolver.generateNamespace",
-                    "when": "editorTextFocus && editorLangId == php"
+                    "when": "editorLangId == php"
                 }
             ]
         },
