@@ -34,3 +34,8 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 ## 0.1.2
 
 - fix import class before declare statements
+
+## 0.1.3
+
+- cleanup
+- expose some functionality for other extensions to use

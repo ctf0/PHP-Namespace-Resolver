@@ -3,7 +3,9 @@ let builtInClasses = require('./classes')
 let naturalSort    = require('node-natural-sort')
 
 class Resolver {
-    regexWordWithNamespace = new RegExp(/[a-zA-Z0-9\\]+/)
+    constructor() {
+        this.regexWordWithNamespace = new RegExp(/[a-zA-Z0-9\\]+/)
+    }
 
     async importCommand(selection) {
         let resolving = this.resolving(selection)
@@ -109,7 +111,7 @@ class Resolver {
     }
 
     getFromInstanceofOperator(text) {
-        let regex      = /instanceof ([A-Z_][A-Za-z0-9\_]*)/gm
+        let regex      = /instanceof ([A-Z_][A-Za-z0-9_]*)/gm
         let matches    = []
         let phpClasses = []
 
@@ -271,7 +273,7 @@ class Resolver {
     }
 
     findNamespaces(resolving, files) {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             let textDocuments = this.getTextDocuments(files, resolving)
 
             Promise.all(textDocuments).then((docs) => {
@@ -287,7 +289,7 @@ class Resolver {
     }
 
     pickClass(namespaces) {
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             if (namespaces.length === 1) {
                 // Only one namespace found so no need to show picker.
                 return resolve(namespaces[0])
@@ -305,7 +307,7 @@ class Resolver {
         let textDocuments = []
 
         for (let i = 0; i < files.length; i++) {
-            let fileName = files[i].fsPath.replace(/^.*[\\\/]/, '').split('.')[0]
+            let fileName = files[i].fsPath.replace(/^.*[\\/]/, '').split('.')[0]
 
             if (fileName !== resolving) {
                 continue
@@ -525,16 +527,16 @@ class Resolver {
 
         message = message.replace(/\$\(.+?\)\s\s/, '')
 
-        error
+        return error
             ? vscode.window.showErrorMessage(`PHP Namespace Resolver: ${message}`)
             : vscode.window.showInformationMessage(`PHP Namespace Resolver: ${message}`)
     }
 
     showErrorMessage(message) {
-        this.showMessage(message, true)
+        return this.showMessage(message, true)
     }
 
-    async generateNamespace() {
+    async generateNamespace(returnDontInsert = false) {
         let compJson   = 'composer.json'
         let currentUri = this.activeEditor().document.uri
 
@@ -561,84 +563,87 @@ class Resolver {
 
         composerFile = composerFile.pop().path
 
-        vscode.workspace.openTextDocument(composerFile)
-            .then((document) => {
-                let composerJson = JSON.parse(document.getText())
-                let psr4         = (composerJson.autoload || {})['psr-4']
+        let document     = await vscode.workspace.openTextDocument(composerFile)
+        let composerJson = JSON.parse(document.getText())
+        let psr4         = (composerJson.autoload || {})['psr-4']
 
-                if (psr4 === undefined) {
-                    return this.showErrorMessage('No psr-4 key in composer.json autoload object, automatic namespace generation failed')
+        if (psr4 === undefined) {
+            return this.showErrorMessage('No psr-4 key in composer.json autoload object, automatic namespace generation failed')
+        }
+
+        let devPsr4 = (composerJson['autoload-dev'] || {})['psr-4']
+
+        if (devPsr4 !== undefined) {
+            psr4 = {...psr4, ...devPsr4}
+        }
+
+        let currentRelativePath = currentPath.split(composerPath)[1]
+
+        // this is a way to always match with psr-4 entries
+        if (!currentRelativePath.endsWith('/')) {
+            currentRelativePath += '/'
+        }
+
+        let namespaceBase = Object.keys(psr4)
+            .filter((namespaceBase) => currentRelativePath.lastIndexOf(psr4[namespaceBase]) !== -1)[0]
+
+        currentRelativePath = currentRelativePath.replace(/^\//g, '')
+
+        let baseDir = psr4[namespaceBase]
+
+        if (baseDir == currentRelativePath) {
+            currentRelativePath = null
+        } else {
+            currentRelativePath = currentRelativePath
+                .replace(baseDir, '')
+                .replace(/\/$/g, '')
+                .replace(/\//g, '\\')
+        }
+
+        namespaceBase = namespaceBase.replace(/\\$/g, '')
+
+        let ns    = null
+        let lower = namespaceBase.toLowerCase()
+
+        if (!currentRelativePath || currentRelativePath == lower) { // dir already namespaced
+            ns = namespaceBase
+        } else { // add parent dir/s to base namespace
+            ns = `${namespaceBase}\\${currentRelativePath}`
+        }
+
+        ns = ns.replace(/\\{2,}/g, '\\')
+
+        let namespace = '\n' + 'namespace ' + ns + ';' + '\n'
+
+        if (returnDontInsert) {
+            return namespace
+        }
+
+        let declarationLines = {}
+
+        try {
+            [, declarationLines] = this.getDeclarations()
+        } catch (error) {
+            return this.showErrorMessage(error.message)
+        }
+
+        if (declarationLines.namespace !== null) {
+            this.replaceNamespaceStatement(
+                namespace,
+                declarationLines.namespace
+            )
+        } else {
+            this.activeEditor().edit((textEdit) => {
+                let line = 1
+
+                if (declarationLines.declare !== null) {
+                    line = declarationLines.declare
                 }
 
-                let devPsr4 = (composerJson['autoload-dev'] || {})['psr-4']
-
-                if (devPsr4 !== undefined) {
-                    psr4 = {...psr4, ...devPsr4}
-                }
-
-                let currentRelativePath = currentPath.split(composerPath)[1]
-
-                // this is a way to always match with psr-4 entries
-                if (!currentRelativePath.endsWith('/')) {
-                    currentRelativePath += '/'
-                }
-
-                let namespaceBase = Object.keys(psr4)
-                    .filter((namespaceBase) => currentRelativePath.lastIndexOf(psr4[namespaceBase]) !== -1)[0]
-
-                currentRelativePath = currentRelativePath.replace(/^\//g, '')
-
-                let baseDir = psr4[namespaceBase]
-
-                if (baseDir == currentRelativePath) {
-                    currentRelativePath = null
-                } else {
-                    currentRelativePath = currentRelativePath
-                        .replace(baseDir, '')
-                        .replace(/\/$/g, '')
-                        .replace(/\//g, '\\')
-                }
-
-                namespaceBase = namespaceBase.replace(/\\$/g, '')
-
-                let ns    = null
-                let lower = namespaceBase.toLowerCase()
-
-                if (!currentRelativePath || currentRelativePath == lower) { // dir already namespaced
-                    ns = namespaceBase
-                } else { // add parent dir/s to base namespace
-                    ns = `${namespaceBase}\\${currentRelativePath}`
-                }
-
-                ns = ns.replace(/\\{2,}/g, '\\')
-
-                let namespace = '\n' + 'namespace ' + ns + ';' + '\n'
-
-                let declarationLines = {}
-
-                try {
-                    [, declarationLines] = this.getDeclarations()
-                } catch (error) {
-                    return this.showErrorMessage(error.message)
-                }
-
-                 if (declarationLines.namespace !== null) {
-                    this.replaceNamespaceStatement(
-                        namespace,
-                        declarationLines.namespace
-                    )
-                } else {
-                    this.activeEditor().edit((textEdit) => {
-                        let line = 1
-
-                        if (declarationLines.declare !== null) {
-                            line = declarationLines.declare
-                        }
-
-                        textEdit.insert(new vscode.Position(line, 0), namespace)
-                    })
-                }
+                textEdit.insert(new vscode.Position(line, 0), namespace)
             })
+        }
+    
     }
 
     async import() {

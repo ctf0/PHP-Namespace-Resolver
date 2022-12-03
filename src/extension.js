@@ -5,26 +5,35 @@ function activate(context) {
     let resolver = new Resolver()
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('namespaceResolver.import', () => resolver.import()),
-        vscode.commands.registerCommand('namespaceResolver.expand', () => resolver.expand()),
-        vscode.commands.registerCommand('namespaceResolver.sort', () => resolver.sortCommand()),
-        vscode.commands.registerCommand('namespaceResolver.importAll', () => resolver.importAll()),
-        vscode.commands.registerCommand('namespaceResolver.generateNamespace', () => resolver.generateNamespace())
+        vscode.commands.registerCommand('namespaceResolver.import', async () => await resolver.import()),
+        vscode.commands.registerCommand('namespaceResolver.expand', async () => await resolver.expand()),
+        vscode.commands.registerCommand('namespaceResolver.sort', async () => await resolver.sortCommand()),
+        vscode.commands.registerCommand('namespaceResolver.importAll', async () => await resolver.importAll()),
+        vscode.commands.registerCommand('namespaceResolver.generateNamespace', async () => await resolver.generateNamespace())
     )
 
     context.subscriptions.push(
-        vscode.workspace.onWillSaveTextDocument((event) => {
+        vscode.workspace.onWillSaveTextDocument(async (event) => {
             if (
                 event &&
-            event.document.languageId === 'php' &&
-            resolver.config('sortOnSave')
+                event.document.languageId === 'php' &&
+                resolver.config('sortOnSave')
             ) {
-                resolver.sortCommand()
+                await resolver.sortCommand()
             }
         })
     )
 
     context.subscriptions.push(resolver)
+
+    return {
+        getNamespace() {
+            return resolver.generateNamespace(true)
+        },
+        insertNamespace() {
+            return resolver.generateNamespace()
+        }
+    }
 }
 
 exports.activate = activate
