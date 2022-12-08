@@ -596,7 +596,7 @@ class Resolver {
                 .replace(/\//g, '\\')
         }
 
-        namespaceBase = namespaceBase.replace(/\\$/g, '')
+        namespaceBase = namespaceBase ? namespaceBase.replace(/\\$/g, '') : ''
 
         let ns    = null
         let lower = namespaceBase.toLowerCase()
@@ -604,7 +604,7 @@ class Resolver {
         if (!currentRelativePath || currentRelativePath == lower) { // dir already namespaced
             ns = namespaceBase
         } else { // add parent dir/s to base namespace
-            ns = `${namespaceBase}\\${currentRelativePath}`
+            ns = namespaceBase ? `${namespaceBase}\\${currentRelativePath}` : currentRelativePath
         }
 
         ns = ns.replace(/\\{2,}/g, '\\')

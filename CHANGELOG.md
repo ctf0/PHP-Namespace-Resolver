@@ -39,3 +39,8 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 
 - cleanup
 - expose some functionality for other extensions to use
+
+## 0.1.5
+
+- support getting file namespace from just the uri
+- fix giving error when file namespace if not pre-declared under `composer.json`
