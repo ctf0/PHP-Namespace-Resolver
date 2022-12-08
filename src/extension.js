@@ -27,8 +27,8 @@ function activate(context) {
     context.subscriptions.push(resolver)
 
     return {
-        getNamespace() {
-            return resolver.generateNamespace(true)
+        getNamespace(uri = null) {
+            return resolver.generateNamespace(true, uri)
         },
         insertNamespace() {
             return resolver.generateNamespace()

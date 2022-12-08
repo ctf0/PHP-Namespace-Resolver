@@ -2,7 +2,7 @@
     "name": "php-namespace-resolver",
     "displayName": "PHP Namespace Resolver",
     "description": "Import and expand php namespaces",
-    "version": "0.1.3",
+    "version": "0.1.4",
     "publisher": "ctf0",
     "author": "ctf0",
     "license": "SEE LICENSE IN LICENSE",
@@ -178,8 +178,8 @@
     },
     "repository": "https://github.com/ctf0/PHP-Namespace-Resolver",
     "devDependencies": {
-        "@types/vscode": "^1.68.0",
-        "@types/node": "16.x"
+        "@types/node": "16.x",
+        "@types/vscode": "^1.68.0"
     },
     "dependencies": {
         "node-natural-sort": "^0.8.6"

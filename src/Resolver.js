@@ -536,17 +536,13 @@ class Resolver {
         return this.showMessage(message, true)
     }
 
-    async generateNamespace(returnDontInsert = false) {
+    async generateNamespace(returnDontInsert = false, uri = null) {
         let compJson   = 'composer.json'
-        let currentUri = this.activeEditor().document.uri
+        let currentUri = uri || this.activeEditor().document.uri
 
         let currentFile     = currentUri.path
         let currentPath     = currentFile.substring(0, currentFile.lastIndexOf('/'))
         let workspaceFolder = vscode.workspace.getWorkspaceFolder(currentUri)
-
-        if (workspaceFolder === undefined) {
-            return this.showErrorMessage('No folder openned in workspace, cannot find composer.json')
-        }
 
         // try to retrieve composer file by searching recursively into parent folders of the current file
         let composerFile
@@ -643,7 +639,6 @@ class Resolver {
                 textEdit.insert(new vscode.Position(line, 0), namespace)
             })
         }
-    
     }
 
     async import() {
