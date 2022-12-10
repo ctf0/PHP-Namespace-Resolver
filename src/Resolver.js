@@ -2,6 +2,8 @@ let vscode         = require('vscode')
 let builtInClasses = require('./classes')
 let naturalSort    = require('node-natural-sort')
 
+let composerFileCache = []
+
 class Resolver {
     constructor() {
         this.regexWordWithNamespace = new RegExp(/[a-zA-Z0-9\\]+/)
@@ -554,17 +556,34 @@ class Resolver {
         } while (!composerFile.length && composerPath !== workspaceFolder.uri.path)
 
         if (!composerFile.length) {
-            return this.showErrorMessage('No composer.json file found, automatic namespace generation failed')
+            this.showErrorMessage('No composer.json file found, automatic namespace generation failed')
+
+            return undefined
         }
 
         composerFile = composerFile.pop().path
+        
+        let cache = composerFileCache.find((item) => item.path === composerFile)
+        let composerJson
 
-        let document     = await vscode.workspace.openTextDocument(composerFile)
-        let composerJson = JSON.parse(document.getText())
-        let psr4         = (composerJson.autoload || {})['psr-4']
+        if (!cache) {
+            let document = await vscode.workspace.openTextDocument(composerFile)
+            composerJson = JSON.parse(document.getText())
+            
+            composerFileCache.push({
+                path: composerFile,
+                content: composerJson
+            })
+        } else {
+            composerJson = cache.content
+        }
+
+        let psr4 = (composerJson.autoload || {})['psr-4']
 
         if (psr4 === undefined) {
-            return this.showErrorMessage('No psr-4 key in composer.json autoload object, automatic namespace generation failed')
+            this.showErrorMessage('No psr-4 key in composer.json autoload object, automatic namespace generation failed')
+
+            return undefined
         }
 
         let devPsr4 = (composerJson['autoload-dev'] || {})['psr-4']
@@ -596,7 +615,15 @@ class Resolver {
                 .replace(/\//g, '\\')
         }
 
-        namespaceBase = namespaceBase ? namespaceBase.replace(/\\$/g, '') : ''
+        namespaceBase = namespaceBase ? namespaceBase.replace(/\\$/g, '') : null
+
+        if (!namespaceBase) {
+            if (!returnDontInsert) {
+                this.showErrorMessage('no namespace found for current file parent directory')
+            }
+
+            return undefined
+        }
 
         let ns    = null
         let lower = namespaceBase.toLowerCase()
@@ -604,7 +631,7 @@ class Resolver {
         if (!currentRelativePath || currentRelativePath == lower) { // dir already namespaced
             ns = namespaceBase
         } else { // add parent dir/s to base namespace
-            ns = namespaceBase ? `${namespaceBase}\\${currentRelativePath}` : currentRelativePath
+            ns = `${namespaceBase}\\${currentRelativePath}`
         }
 
         ns = ns.replace(/\\{2,}/g, '\\')
@@ -620,7 +647,9 @@ class Resolver {
         try {
             [, declarationLines] = this.getDeclarations()
         } catch (error) {
-            return this.showErrorMessage(error.message)
+            this.showErrorMessage(error.message)
+
+            return undefined
         }
 
         if (declarationLines.namespace !== null) {
