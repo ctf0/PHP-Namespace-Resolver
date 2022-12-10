@@ -2,8 +2,6 @@ let vscode         = require('vscode')
 let builtInClasses = require('./classes')
 let naturalSort    = require('node-natural-sort')
 
-let composerFileCache = []
-
 class Resolver {
     constructor() {
         this.regexWordWithNamespace = new RegExp(/[a-zA-Z0-9\\]+/)
@@ -562,23 +560,10 @@ class Resolver {
         }
 
         composerFile = composerFile.pop().path
-        
-        let cache = composerFileCache.find((item) => item.path === composerFile)
-        let composerJson
 
-        if (!cache) {
-            let document = await vscode.workspace.openTextDocument(composerFile)
-            composerJson = JSON.parse(document.getText())
-            
-            composerFileCache.push({
-                path: composerFile,
-                content: composerJson
-            })
-        } else {
-            composerJson = cache.content
-        }
-
-        let psr4 = (composerJson.autoload || {})['psr-4']
+        let document     = await vscode.workspace.openTextDocument(composerFile)
+        let composerJson = JSON.parse(document.getText())
+        let psr4         = (composerJson.autoload || {})['psr-4']
 
         if (psr4 === undefined) {
             this.showErrorMessage('No psr-4 key in composer.json autoload object, automatic namespace generation failed')
