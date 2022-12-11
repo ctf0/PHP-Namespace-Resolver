@@ -1,28 +1,30 @@
-let vscode         = require('vscode')
-let builtInClasses = require('./classes')
-let naturalSort    = require('node-natural-sort')
+import { findUp } from 'find-up'
+import fs from 'fs-extra'
+import naturalSort from 'node-natural-sort'
+import path from 'node:path'
+import * as vscode from 'vscode'
+import BUILT_IN_CLASSES from './classes'
 
-class Resolver {
-    constructor() {
-        this.regexWordWithNamespace = new RegExp(/[a-zA-Z0-9\\]+/)
-    }
+const COMP_JSON = 'composer.json'
+const regexWordWithNamespace = new RegExp(/[a-zA-Z0-9\\]+/)
 
+export default class Resolver {
     async importCommand(selection) {
-        let resolving = this.resolving(selection)
+        let className = this.resolving(selection)
 
-        if (resolving === undefined) {
+        if (className === undefined) {
             return this.showErrorMessage('No class is selected.')
         }
 
         let fqcn
         let replaceClassAfterImport = false
 
-        if (/\\/.test(resolving)) {
-            fqcn                    = resolving.replace(/^\\?/, '')
+        if (/\\/.test(className)) {
+            fqcn = className.replace(/^\\?/, '')
             replaceClassAfterImport = true
         } else {
-            let files      = await this.findFiles(resolving)
-            let namespaces = await this.findNamespaces(resolving, files)
+            let files = await this.findFiles(className)
+            let namespaces = await this.findNamespaces(className, files)
 
             fqcn = await this.pickClass(namespaces)
         }
@@ -31,11 +33,11 @@ class Resolver {
     }
 
     async importAll() {
-        let text          = this.activeEditor().document.getText()
-        let phpClasses    = this.getPhpClasses(text)
+        let text = this.activeEditor()?.document.getText()
+        let phpClasses = this.getPhpClasses(text)
         let useStatements = this.getUseStatementsArray()
 
-        for (let phpClass of phpClasses) {
+        for (const phpClass of phpClasses) {
             if (!useStatements.includes(phpClass)) {
                 await this.importCommand(phpClass)
             }
@@ -54,9 +56,9 @@ class Resolver {
     }
 
     getExtended(text) {
-        let regex      = /extends ([A-Z][A-Za-z0-9\-_]*)/gm
-        let matches    = []
-        let phpClasses = []
+        let regex = /extends ([A-Z][A-Za-z0-9\-_]*)/gm
+        let matches: any = []
+        let phpClasses: any = []
 
         while (matches = regex.exec(text)) {
             phpClasses.push(matches[1])
@@ -66,15 +68,15 @@ class Resolver {
     }
 
     getFromFunctionParameters(text) {
-        let regex      = /function [\S]+\((.*)\)/gm
-        let matches    = []
-        let phpClasses = []
+        let regex = /function [\S]+\((.*)\)/gm
+        let matches: any = []
+        let phpClasses: any = []
 
         while (matches = regex.exec(text)) {
             let parameters = matches[1].split(', ')
 
-            for (let s of parameters) {
-                let phpClassName = s.substr(0, s.indexOf(' '))
+            for (const param of parameters) {
+                let phpClassName = param.substr(0, param.indexOf(' '))
 
                 // Starts with capital letter
                 if (phpClassName && /[A-Z]/.test(phpClassName[0])) {
@@ -87,9 +89,9 @@ class Resolver {
     }
 
     getInitializedWithNew(text) {
-        let regex      = /new ([A-Z][A-Za-z0-9\-_]*)/gm
-        let matches    = []
-        let phpClasses = []
+        let regex = /new ([A-Z][A-Za-z0-9\-_]*)/gm
+        let matches: any = []
+        let phpClasses: any = []
 
         while (matches = regex.exec(text)) {
             phpClasses.push(matches[1])
@@ -99,9 +101,9 @@ class Resolver {
     }
 
     getFromStaticCalls(text) {
-        let regex      = /([A-Z][A-Za-z0-9\-_]*)::/gm
-        let matches    = []
-        let phpClasses = []
+        let regex = /([A-Z][A-Za-z0-9\-_]*)::/gm
+        let matches: any = []
+        let phpClasses: any = []
 
         while (matches = regex.exec(text)) {
             phpClasses.push(matches[1])
@@ -111,9 +113,9 @@ class Resolver {
     }
 
     getFromInstanceofOperator(text) {
-        let regex      = /instanceof ([A-Z_][A-Za-z0-9_]*)/gm
-        let matches    = []
-        let phpClasses = []
+        let regex = /instanceof ([A-Z_][A-Za-z0-9_]*)/gm
+        let matches: any = []
+        let phpClasses: any = []
 
         while (matches = regex.exec(text)) {
             phpClasses.push(matches[1])
@@ -123,9 +125,9 @@ class Resolver {
     }
 
     getImportedPhpClasses(text) {
-        let regex              = /use (.*);/gm
-        let matches            = []
-        let importedPhpClasses = []
+        let regex = /use (.*);/gm
+        let matches: any = []
+        let importedPhpClasses: any = []
 
         while (matches = regex.exec(text)) {
             let className = matches[1].split('\\').pop()
@@ -159,7 +161,7 @@ class Resolver {
     async insert(fqcn, declarationLines, alias = null) {
         let [prepend, append, insertLine] = this.getInsertLine(declarationLines)
 
-        await this.activeEditor().edit((textEdit) => {
+        await this.activeEditor()?.edit((textEdit) => {
             textEdit.replace(
                 new vscode.Position((insertLine), 0),
                 (`${prepend}use ${fqcn}`) + (alias !== null ? ` as ${alias}` : '') + (`;${append}`)
@@ -174,7 +176,7 @@ class Resolver {
     }
 
     async insertAsAlias(selection, fqcn, useStatements, declarationLines) {
-        let alias = await vscode.window.showInputBox({
+        let alias: any = await vscode.window.showInputBox({
             placeHolder: 'Enter an alias or leave it empty to replace'
         })
 
@@ -200,7 +202,7 @@ class Resolver {
             return fqcn.endsWith(className)
         })
 
-        await this.activeEditor().edit((textEdit) => {
+        await this.activeEditor()?.edit((textEdit) => {
             textEdit.replace(
                 new vscode.Range(useStatement.line, 0, useStatement.line, useStatement.text.length),
                 `use ${fqcn};`
@@ -214,10 +216,10 @@ class Resolver {
 
     async replaceNamespaceStatement(namespace, line) {
         let realLine = line - 1
-        let text     = this.activeEditor().document.lineAt(realLine).text
-        let newNs    = text.replace(/namespace (.+)/, namespace)
+        let text: any = this.activeEditor()?.document.lineAt(realLine).text
+        let newNs = text.replace(/namespace (.+)/, namespace)
 
-        await this.activeEditor().edit((textEdit) => {
+        await this.activeEditor()?.edit((textEdit) => {
             textEdit.replace(
                 new vscode.Range(realLine, 0, realLine, text.length),
                 newNs.trim()
@@ -225,7 +227,7 @@ class Resolver {
         })
     }
 
-    async importAndReplaceSelectedClass(selection, replacingClassName, fqcn, declarationLines, alias = null) {
+    async importAndReplaceSelectedClass(selection: any, replacingClassName: string, fqcn: any, declarationLines: any, alias = null) {
         await this.changeSelectedClass(selection, replacingClassName, false)
 
         this.insert(fqcn, declarationLines, alias)
@@ -238,24 +240,26 @@ class Resolver {
             return this.showErrorMessage('No class is selected.')
         }
 
-        let files      = await this.findFiles(resolving)
+        let files = await this.findFiles(resolving)
         let namespaces = await this.findNamespaces(resolving, files)
-        let fqcn       = await this.pickClass(namespaces)
+        let fqcn = await this.pickClass(namespaces)
 
         this.changeSelectedClass(selection, fqcn, true)
     }
 
     async changeSelectedClass(selection, fqcn, prependBackslash = false) {
-        await this.activeEditor().edit((textEdit) => {
+        let editor: any = this.activeEditor()
+
+        await editor.edit((textEdit) => {
             textEdit.replace(
-                this.activeEditor().document.getWordRangeAtPosition(selection.active, this.regexWordWithNamespace),
+                editor.document.getWordRangeAtPosition(selection.active, regexWordWithNamespace),
                 (prependBackslash && this.config('leadingSeparator') ? '\\' : '') + fqcn
             )
         })
 
         let newPosition = new vscode.Position(selection.active.line, selection.active.character)
 
-        this.activeEditor().selection = new vscode.Selection(newPosition, newPosition)
+        editor.selection = new vscode.Selection(newPosition, newPosition)
     }
 
     sortCommand() {
@@ -268,24 +272,24 @@ class Resolver {
         this.showMessage('$(check)  Imports are sorted.')
     }
 
-    findFiles(resolving) {
-        return vscode.workspace.findFiles(`**/${resolving}.php`, this.config('exclude'))
+    async findFiles(resolving) {
+        return vscode.workspace.findFiles(
+            `**/${resolving}.php`,
+            this.config('exclude')
+        )
     }
 
-    findNamespaces(resolving, files) {
-        return new Promise((resolve) => {
-            let textDocuments = this.getTextDocuments(files, resolving)
+    async findNamespaces(className, files) {
+        let parsedNamespaces = this.parseNamespaces(
+            await this.getTextDocuments(files, className),
+            className
+        )
 
-            Promise.all(textDocuments).then((docs) => {
-                let parsedNamespaces = this.parseNamespaces(docs, resolving)
+        if (parsedNamespaces.length === 0) {
+            return this.showErrorMessage('$(circle-slash) The class is not found.')
+        }
 
-                if (parsedNamespaces.length === 0) {
-                    return this.showErrorMessage('$(circle-slash)  The class is not found.')
-                }
-
-                resolve(parsedNamespaces)
-            })
-        })
+        return parsedNamespaces
     }
 
     pickClass(namespaces) {
@@ -303,32 +307,34 @@ class Resolver {
         })
     }
 
-    getTextDocuments(files, resolving) {
-        let textDocuments = []
+    async getTextDocuments(files, resolving) {
+        let textDocuments: any = []
 
-        for (let i = 0; i < files.length; i++) {
-            let fileName = files[i].fsPath.replace(/^.*[\\/]/, '').split('.')[0]
+        for (const file of files) {
+            let fileName = path.parse(file.path).name
 
             if (fileName !== resolving) {
                 continue
             }
 
-            textDocuments.push(vscode.workspace.openTextDocument(files[i]))
+            textDocuments.push(
+                await vscode.workspace.openTextDocument(file)
+            )
         }
 
         return textDocuments
     }
 
-    parseNamespaces(docs, resolving) {
-        let parsedNamespaces = []
+    parseNamespaces(docs, className) {
+        let parsedNamespaces: any = []
 
-        for (let i = 0; i < docs.length; i++) {
-            for (let line = 0; line < docs[i].lineCount; line++) {
-                let textLine = docs[i].lineAt(line).text
+        for (const doc of docs) {
+            for (let line = 0; line < doc.lineCount; line++) {
+                let textLine = doc.lineAt(line).text
 
                 if (textLine.startsWith('namespace ') || textLine.startsWith('<?php namespace ')) {
                     let namespace = textLine.match(/^(namespace|(<\?php namespace))\s+(.+)?;/).pop()
-                    let fqcn      = `${namespace}\\${resolving}`
+                    let fqcn = `${namespace}\\${className}`
 
                     if (!parsedNamespaces.includes(fqcn)) {
                         parsedNamespaces.push(fqcn)
@@ -339,15 +345,15 @@ class Resolver {
         }
 
         // If selected text is a built-in php class add that at the beginning.
-        if (builtInClasses.includes(resolving)) {
-            parsedNamespaces.unshift(resolving)
+        if (BUILT_IN_CLASSES.includes(className)) {
+            parsedNamespaces.unshift(className)
         }
 
         // If namespace can't be parsed but there is a file with the same
         // name of selected text then assuming it's a global class and
         // add that in the parsedNamespaces array as a global class.
         if (parsedNamespaces.length === 0 && docs.length > 0) {
-            parsedNamespaces.push(resolving)
+            parsedNamespaces.push(className)
         }
 
         return parsedNamespaces
@@ -378,8 +384,8 @@ class Resolver {
 
         if (this.config('sortNatural')) {
             let natsort = naturalSort({
-                caseSensitive : true,
-                order         : this.config('sortAlphabetically') ? 'ASC' : 'DESC'
+                caseSensitive: true,
+                order: this.config('sortAlphabetically') ? 'ASC' : 'DESC'
             })
 
             sortFunction = (a, b) => {
@@ -389,7 +395,7 @@ class Resolver {
 
         let sorted = useStatements.slice().sort(sortFunction)
 
-        this.activeEditor().edit((textEdit) => {
+        this.activeEditor()?.edit((textEdit) => {
             for (let i = 0; i < sorted.length; i++) {
                 textEdit.replace(
                     new vscode.Range(useStatements[i].line, 0, useStatements[i].line, useStatements[i].text.length),
@@ -404,8 +410,8 @@ class Resolver {
     }
 
     hasConflict(useStatements, resolving) {
-        for (let i = 0; i < useStatements.length; i++) {
-            if (useStatements[i].text.match(/(\w+)?;/).pop() === resolving) {
+        for (const useStatement of useStatements) {
+            if (useStatement.text.match(/(\w+)?;/).pop() === resolving) {
                 return true
             }
         }
@@ -414,10 +420,11 @@ class Resolver {
     }
 
     getUseStatementsArray() {
-        let useStatements = []
+        let editor: any = this.activeEditor()
+        let useStatements: any = []
 
-        for (let line = 0; line < this.activeEditor().document.lineCount; line++) {
-            let text = this.activeEditor().document.lineAt(line).text
+        for (let line = 0; line < editor?.document.lineCount; line++) {
+            let text = editor.document.lineAt(line).text
 
             if (text.startsWith('use ')) {
                 useStatements.push(
@@ -432,17 +439,25 @@ class Resolver {
     }
 
     getDeclarations(pickedClass = null) {
-        let useStatements    = []
-        let declarationLines = {
-            PHPTag       : 0,
-            declare      : null,
-            namespace    : null,
-            useStatement : null,
-            class        : null
+        let document: any = this.activeEditor()?.document
+        let useStatements: any = []
+        type declarationLines = {
+            PHPTag: any,
+            declare: any,
+            namespace: any,
+            useStatement: any,
+            class: any
+        }
+        let declarationLines: declarationLines = {
+            PHPTag: null,
+            declare: null,
+            namespace: null,
+            useStatement: null,
+            class: null
         }
 
-        for (let line = 0; line < this.activeEditor().document.lineCount; line++) {
-            let text = this.activeEditor().document.lineAt(line).text
+        for (let line = 0; line < document.lineCount; line++) {
+            let text = document.lineAt(line).text
 
             if (pickedClass !== null && text === `use ${pickedClass};`) {
                 throw new Error('PHP Namespace Resolver: The class is already imported.')
@@ -467,7 +482,7 @@ class Resolver {
             } else if (text.startsWith('namespace ') || text.startsWith('<?php namespace')) {
                 declarationLines.namespace = line + 1
             } else if (text.startsWith('use ')) {
-                useStatements.push({text, line})
+                useStatements.push({ text, line })
                 declarationLines.useStatement = line + 1
             } else if (/(class|trait|interface)\s+\w+/.test(text)) {
                 declarationLines.class = line + 1
@@ -478,8 +493,8 @@ class Resolver {
     }
 
     getInsertLine(declarationLines) {
-        let prepend    = declarationLines.PHPTag === 0 ? '' : '\n'
-        let append     = '\n'
+        let prepend = declarationLines.PHPTag === 0 ? '' : '\n'
+        let append = '\n'
         let insertLine = declarationLines.PHPTag
 
         if (prepend === '' && declarationLines.namespace !== null) {
@@ -487,7 +502,7 @@ class Resolver {
         }
 
         if (declarationLines.useStatement !== null) {
-            prepend    = ''
+            prepend = ''
             insertLine = declarationLines.useStatement
         } else if (declarationLines.namespace !== null) {
             insertLine = declarationLines.namespace
@@ -507,17 +522,19 @@ class Resolver {
     }
 
     resolving(selection) {
+        let document: any = this.activeEditor()?.document
+
         if ((typeof selection) == 'string') {
             return selection
         }
 
-        let wordRange = this.activeEditor().document.getWordRangeAtPosition(selection.active, this.regexWordWithNamespace)
+        let wordRange = document.getWordRangeAtPosition(selection.active, regexWordWithNamespace)
 
         if (wordRange === undefined) {
             return
         }
 
-        return this.activeEditor().document.getText(wordRange)
+        return document.getText(wordRange)
     }
 
     showMessage(message, error = false) {
@@ -537,33 +554,30 @@ class Resolver {
     }
 
     async generateNamespace(returnDontInsert = false, uri = null) {
-        let compJson   = 'composer.json'
-        let currentUri = uri || this.activeEditor().document.uri
+        let editor: any = this.activeEditor()
+        let currentUri = uri || editor?.document.uri
+        let currentFilePath = currentUri?.path
+        let workspaceFolder = vscode.workspace.getWorkspaceFolder(currentUri)?.uri.fsPath
 
-        let currentFile     = currentUri.path
-        let currentPath     = currentFile.substring(0, currentFile.lastIndexOf('/'))
-        let workspaceFolder = vscode.workspace.getWorkspaceFolder(currentUri)
+        if (!currentFilePath) {
+            this.showErrorMessage('No file path found, automatic namespace generation failed')
+
+            return undefined
+        }
+
+        let currentFileDir = path.parse(currentFilePath).dir
 
         // try to retrieve composer file by searching recursively into parent folders of the current file
-        let composerFile
-        let composerPath = currentFile
+        let composerFile = await findUp(COMP_JSON, { cwd: currentFilePath })
 
-        do {
-            composerPath = composerPath.substring(0, composerPath.lastIndexOf('/'))
-            composerFile = await vscode.workspace.findFiles(new vscode.RelativePattern(composerPath, compJson))
-        } while (!composerFile.length && composerPath !== workspaceFolder.uri.path)
-
-        if (!composerFile.length) {
+        if (!composerFile) {
             this.showErrorMessage('No composer.json file found, automatic namespace generation failed')
 
             return undefined
         }
 
-        composerFile = composerFile.pop().path
-
-        let document     = await vscode.workspace.openTextDocument(composerFile)
-        let composerJson = JSON.parse(document.getText())
-        let psr4         = (composerJson.autoload || {})['psr-4']
+        let composerJson = await fs.readJson(composerFile)
+        let psr4 = (composerJson.autoload || {})['psr-4']
 
         if (psr4 === undefined) {
             this.showErrorMessage('No psr-4 key in composer.json autoload object, automatic namespace generation failed')
@@ -574,17 +588,17 @@ class Resolver {
         let devPsr4 = (composerJson['autoload-dev'] || {})['psr-4']
 
         if (devPsr4 !== undefined) {
-            psr4 = {...psr4, ...devPsr4}
+            psr4 = { ...psr4, ...devPsr4 }
         }
 
-        let currentRelativePath = currentPath.split(composerPath)[1]
+        let currentRelativePath: any = currentFileDir.replace(`${workspaceFolder}/`, '')
 
         // this is a way to always match with psr-4 entries
         if (!currentRelativePath.endsWith('/')) {
             currentRelativePath += '/'
         }
 
-        let namespaceBase = Object.keys(psr4)
+        let namespaceBase: any = Object.keys(psr4)
             .filter((namespaceBase) => currentRelativePath.lastIndexOf(psr4[namespaceBase]) !== -1)[0]
 
         currentRelativePath = currentRelativePath.replace(/^\//g, '')
@@ -610,7 +624,7 @@ class Resolver {
             return undefined
         }
 
-        let ns    = null
+        let ns: any = null
         let lower = namespaceBase.toLowerCase()
 
         if (!currentRelativePath || currentRelativePath == lower) { // dir already namespaced
@@ -627,7 +641,7 @@ class Resolver {
             return namespace
         }
 
-        let declarationLines = {}
+        let declarationLines: any = {}
 
         try {
             [, declarationLines] = this.getDeclarations()
@@ -643,12 +657,8 @@ class Resolver {
                 declarationLines.namespace
             )
         } else {
-            this.activeEditor().edit((textEdit) => {
-                let line = 1
-
-                if (declarationLines.declare !== null) {
-                    line = declarationLines.declare
-                }
+            editor?.edit((textEdit) => {
+                let line = declarationLines.declare || 1
 
                 textEdit.insert(new vscode.Position(line, 0), namespace)
             })
@@ -656,24 +666,26 @@ class Resolver {
     }
 
     async import() {
-        let selections = this.activeEditor().selections
+        let selections = this.activeEditor()?.selections
 
-        for (let i = 0; i < selections.length; i++) {
-            await this.importCommand(selections[i])
+        if (selections) {
+            for (const selection of selections) {
+                await this.importCommand(selection)
+            }
         }
     }
 
     async expand() {
-        let selections = this.activeEditor().selections
+        let selections = this.activeEditor()?.selections
 
-        for (let i = 0; i < selections.length; i++) {
-            await this.expandCommand(selections[i])
+        if (selections) {
+            for (const selection of selections) {
+                await this.expandCommand(selection)
+            }
         }
     }
 
-    config(key) {
+    config(key): any {
         return vscode.workspace.getConfiguration('namespaceResolver').get(key)
     }
 }
-
-module.exports = Resolver

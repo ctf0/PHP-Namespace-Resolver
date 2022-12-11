@@ -2,10 +2,10 @@
     "name": "php-namespace-resolver",
     "displayName": "PHP Namespace Resolver",
     "description": "Import and expand php namespaces",
-    "version": "0.1.8",
+    "version": "0.2.0",
     "publisher": "ctf0",
     "author": "ctf0",
-    "license": "SEE LICENSE IN LICENSE",
+    "repository": "https://github.com/ctf0/PHP-Namespace-Resolver",
     "engines": {
         "vscode": "^1.68.0"
     },
@@ -19,15 +19,11 @@
         "import",
         "expand"
     ],
-    "galleryBanner": {
-        "color": "#282c34",
-        "theme": "dark"
-    },
     "activationEvents": [
         "workspaceContains:composer.json",
         "onLanguage:php"
     ],
-    "main": "./src/extension",
+    "main": "./out/main",
     "icon": "images/icon.png",
     "contributes": {
         "commands": [
@@ -177,12 +173,23 @@
             }
         }
     },
-    "repository": "https://github.com/ctf0/PHP-Namespace-Resolver",
+    "scripts": {
+        "vscode:prepublish": "npm run esbuild-base -- --minify",
+        "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
+        "esbuild": "npm run esbuild-base -- --sourcemap",
+        "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+        "watch": "npm run vscode:prepublish"
+    },
     "devDependencies": {
-        "@types/node": "16.x",
-        "@types/vscode": "^1.68.0"
+        "@types/fs-extra": "^9.0.13",
+        "@types/node": "^18.11.4",
+        "@types/vscode": "^1.68.0",
+        "esbuild": "^0.15.13",
+        "typescript": "^4.6.3"
     },
     "dependencies": {
+        "fs-extra": "^11.1.0",
+        "find-up": "^6.3.0",
         "node-natural-sort": "^0.8.6"
     }
 }

@@ -48,3 +48,8 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 ## 0.1.7
 
 - fix a regression in 0.1.6
+
+## 0.2.0
+
+- use ts instead of js
+- better api
