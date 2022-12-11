@@ -2,7 +2,7 @@
     "name": "php-namespace-resolver",
     "displayName": "PHP Namespace Resolver",
     "description": "Import and expand php namespaces",
-    "version": "0.1.7",
+    "version": "0.1.8",
     "publisher": "ctf0",
     "author": "ctf0",
     "license": "SEE LICENSE IN LICENSE",
@@ -24,6 +24,7 @@
         "theme": "dark"
     },
     "activationEvents": [
+        "workspaceContains:composer.json",
         "onLanguage:php"
     ],
     "main": "./src/extension",
