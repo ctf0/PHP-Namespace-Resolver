@@ -53,3 +53,10 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 
 - use ts instead of js
 - better api
+
+## 0.3.0
+
+- import all will now handle (traits, property promotions, interfaces)
+- better api using php-parser
+- remove class import when using expand command
+- show error when importing a class that has a name being used as an alias

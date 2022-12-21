@@ -2,7 +2,7 @@
     "name": "php-namespace-resolver",
     "displayName": "PHP Namespace Resolver",
     "description": "Import and expand php namespaces",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "publisher": "ctf0",
     "author": "ctf0",
     "repository": "https://github.com/ctf0/PHP-Namespace-Resolver",
@@ -21,7 +21,11 @@
     ],
     "activationEvents": [
         "workspaceContains:composer.json",
-        "onLanguage:php"
+        "namespaceResolver.import",
+        "namespaceResolver.importAll",
+        "namespaceResolver.expand",
+        "namespaceResolver.sort",
+        "namespaceResolver.generateNamespace"
     ],
     "main": "./out/main",
     "icon": "images/icon.png",
@@ -188,8 +192,9 @@
         "typescript": "^4.6.3"
     },
     "dependencies": {
-        "fs-extra": "^11.1.0",
         "find-up": "^6.3.0",
-        "node-natural-sort": "^0.8.6"
+        "fs-extra": "^11.1.0",
+        "node-natural-sort": "^0.8.6",
+        "php-parser": "^3.1.2"
     }
 }

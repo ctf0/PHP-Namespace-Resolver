@@ -1,691 +1,677 @@
-import { findUp } from 'find-up'
-import fs from 'fs-extra'
-import naturalSort from 'node-natural-sort'
-import path from 'node:path'
-import * as vscode from 'vscode'
-import BUILT_IN_CLASSES from './classes'
+import { findUp } from 'find-up';
+import fs from 'fs-extra';
+import naturalSort from 'node-natural-sort';
+import path from 'node:path';
+import * as vscode from 'vscode';
+import BUILT_IN_CLASSES from './classes';
+import * as Parser from './Parser';
 
-const COMP_JSON = 'composer.json'
-const regexWordWithNamespace = new RegExp(/[a-zA-Z0-9\\]+/)
+const COMP_JSON = 'composer.json';
+const regexWordWithNamespace = new RegExp(/[a-zA-Z0-9\\]+/);
 
 export default class Resolver {
+    CLASS_AST: any;
+    EDITOR: vscode.TextEditor;
+
     async importCommand(selection) {
-        let className = this.resolving(selection)
+        const className = this.resolving(selection);
 
         if (className === undefined) {
-            return this.showErrorMessage('No class is selected.')
+            return this.showErrorMessage('No class is selected.');
         }
 
-        let fqcn
-        let replaceClassAfterImport = false
+        let fqcn;
+        let replaceClassAfterImport = false;
 
         if (/\\/.test(className)) {
-            fqcn = className.replace(/^\\?/, '')
-            replaceClassAfterImport = true
+            fqcn = className.replace(/^\\?/, '');
+            replaceClassAfterImport = true;
         } else {
-            let files = await this.findFiles(className)
-            let namespaces = await this.findNamespaces(className, files)
+            const files = await this.findFiles(className);
+            const namespaces = await this.findNamespaces(className, files);
 
-            fqcn = await this.pickClass(namespaces)
+            fqcn = await this.pickClass(namespaces);
         }
 
-        this.importClass(selection, fqcn, replaceClassAfterImport)
+        this.importClass(selection, fqcn, replaceClassAfterImport);
     }
 
     async importAll() {
-        let text = this.activeEditor()?.document.getText()
-        let phpClasses = this.getPhpClasses(text)
-        let useStatements = this.getUseStatementsArray()
+        this.setEditorAndAST();
+
+        const [useStatements, declarationLines] = this.getDeclarations();
+        const phpClasses = this.getFileClassesAndTraits(declarationLines);
 
         for (const phpClass of phpClasses) {
-            if (!useStatements.includes(phpClass)) {
-                await this.importCommand(phpClass)
+            if (!this.hasConflict(useStatements, phpClasses) && !this.hasAliasConflict(useStatements, phpClasses)) {
+                await this.importCommand(phpClass);
             }
         }
     }
 
-    getPhpClasses(text) {
-        let phpClasses = this.getExtended(text)
+    getFileClassesAndTraits(declarationLines) {
+        const text = this.EDITOR?.document.getText();
+        const _class = declarationLines.class;
+        let phpClasses = [];
 
-        phpClasses = phpClasses.concat(this.getFromFunctionParameters(text))
-        phpClasses = phpClasses.concat(this.getInitializedWithNew(text))
-        phpClasses = phpClasses.concat(this.getFromStaticCalls(text))
-        phpClasses = phpClasses.concat(this.getFromInstanceofOperator(text))
-
-        return phpClasses.filter((v, i, a) => a.indexOf(v) === i)
-    }
-
-    getExtended(text) {
-        let regex = /extends ([A-Z][A-Za-z0-9\-_]*)/gm
-        let matches: any = []
-        let phpClasses: any = []
-
-        while (matches = regex.exec(text)) {
-            phpClasses.push(matches[1])
+        if (_class?.extends !== null) {
+            phpClasses = phpClasses.concat(_class.extends.name);
         }
 
-        return phpClasses
-    }
-
-    getFromFunctionParameters(text) {
-        let regex = /function [\S]+\((.*)\)/gm
-        let matches: any = []
-        let phpClasses: any = []
-
-        while (matches = regex.exec(text)) {
-            let parameters = matches[1].split(', ')
-
-            for (const param of parameters) {
-                let phpClassName = param.substr(0, param.indexOf(' '))
-
-                // Starts with capital letter
-                if (phpClassName && /[A-Z]/.test(phpClassName[0])) {
-                    phpClasses.push(phpClassName)
-                }
-            }
+        if (_class?.implements !== null) {
+            phpClasses = phpClasses.concat(
+                _class.implements
+                    .filter((item) => item.resolution == "uqn")
+                    .map((item) => item.name),
+            );
         }
 
-        return phpClasses
+        phpClasses = phpClasses.concat(...this.getFromFunctionParameters(declarationLines.class));
+        phpClasses = phpClasses.concat(this.getInitializedWithNew(text));
+        phpClasses = phpClasses.concat(this.getFromStaticCalls(text));
+        phpClasses = phpClasses.concat(this.getFromInstanceofOperator(text));
+        phpClasses = phpClasses.concat(declarationLines.trait?.map((item) => item.name));
+
+        return phpClasses.filter((item) => item);
+    }
+
+    getFromFunctionParameters(_class) {
+        const methods = _class.body?.filter((item) => item.kind === 'method' && item.arguments.length);
+
+        return methods?.map((item) => item.arguments
+            .filter((arg) => arg.type.kind == 'name' && arg.type.resolution == "uqn")
+            .map((arg) => arg.type.name));
     }
 
     getInitializedWithNew(text) {
-        let regex = /new ([A-Z][A-Za-z0-9\-_]*)/gm
-        let matches: any = []
-        let phpClasses: any = []
+        const regex = /new ([A-Z][A-Za-z0-9\-_]*)/gm;
+        let matches: any = [];
+        const phpClasses: any = [];
 
         while (matches = regex.exec(text)) {
-            phpClasses.push(matches[1])
+            phpClasses.push(matches[1]);
         }
 
-        return phpClasses
+        return phpClasses;
     }
 
     getFromStaticCalls(text) {
-        let regex = /([A-Z][A-Za-z0-9\-_]*)::/gm
-        let matches: any = []
-        let phpClasses: any = []
+        const regex = /([A-Z][A-Za-z0-9\-_]*)::/gm;
+        let matches: any = [];
+        const phpClasses: any = [];
 
         while (matches = regex.exec(text)) {
-            phpClasses.push(matches[1])
+            phpClasses.push(matches[1]);
         }
 
-        return phpClasses
+        return phpClasses;
     }
 
     getFromInstanceofOperator(text) {
-        let regex = /instanceof ([A-Z_][A-Za-z0-9_]*)/gm
-        let matches: any = []
-        let phpClasses: any = []
+        const regex = /instanceof ([A-Z_][A-Za-z0-9_]*)/gm;
+        let matches: any = [];
+        const phpClasses: any = [];
 
         while (matches = regex.exec(text)) {
-            phpClasses.push(matches[1])
+            phpClasses.push(matches[1]);
         }
 
-        return phpClasses
+        return phpClasses;
     }
 
     getImportedPhpClasses(text) {
-        let regex = /use (.*);/gm
-        let matches: any = []
-        let importedPhpClasses: any = []
+        const regex = /use (.*);/gm;
+        let matches: any = [];
+        const importedPhpClasses: any = [];
 
         while (matches = regex.exec(text)) {
-            let className = matches[1].split('\\').pop()
+            const className = matches[1].split('\\').pop();
 
-            importedPhpClasses.push(className)
+            importedPhpClasses.push(className);
         }
 
-        return importedPhpClasses
+        return importedPhpClasses;
     }
 
     importClass(selection, fqcn, replaceClassAfterImport = false) {
-        let useStatements, declarationLines
-
         try {
-            [useStatements, declarationLines] = this.getDeclarations(fqcn)
+            const [useStatements, declarationLines] = this.getDeclarations();
+            const classBaseName = fqcn.match(/(\w+)/g).pop();
+
+            if (this.hasConflict(useStatements, classBaseName)) {
+                return this.insertAsAlias(selection, fqcn, useStatements, declarationLines);
+            }
+
+            if (this.hasAliasConflict(useStatements, classBaseName)) {
+                return this.showErrorMessage(`class : '${classBaseName}' is used as alias.`);
+            }
+
+            if (replaceClassAfterImport) {
+                return this.importAndReplaceSelectedClass(selection, classBaseName, fqcn, declarationLines);
+            }
+
+            return this.insert(fqcn, declarationLines);
         } catch (error) {
-            return this.showErrorMessage(error.message)
-        }
-
-        let classBaseName = fqcn.match(/(\w+)/g).pop()
-
-        if (this.hasConflict(useStatements, classBaseName)) {
-            this.insertAsAlias(selection, fqcn, useStatements, declarationLines)
-        } else if (replaceClassAfterImport) {
-            this.importAndReplaceSelectedClass(selection, classBaseName, fqcn, declarationLines)
-        } else {
-            this.insert(fqcn, declarationLines)
+            return this.showErrorMessage(error.message);
         }
     }
 
     async insert(fqcn, declarationLines, alias = null) {
-        let [prepend, append, insertLine] = this.getInsertLine(declarationLines)
+        const insertLine = this.getInsertLine(declarationLines);
+        let text = `use ${fqcn}`;
 
-        await this.activeEditor()?.edit((textEdit) => {
-            textEdit.replace(
-                new vscode.Position((insertLine), 0),
-                (`${prepend}use ${fqcn}`) + (alias !== null ? ` as ${alias}` : '') + (`;${append}`)
-            )
-        })
-
-        if (this.config('autoSort')) {
-            this.sortImports()
+        if (alias) {
+            text += ` as ${alias}`;
         }
 
-        this.showMessage('$(check)  The class is imported.')
+        await this.EDITOR?.edit((textEdit) => {
+            textEdit.insert(
+                new vscode.Position(insertLine, 0),
+                `${text};\n`,
+            );
+        });
+
+        if (this.config('autoSort')) {
+            this.setEditorAndAST();
+            await this.sortImports();
+        }
+
+        this.showMessage('$(check) The class is imported.');
     }
 
     async insertAsAlias(selection, fqcn, useStatements, declarationLines) {
-        let alias: any = await vscode.window.showInputBox({
-            placeHolder: 'Enter an alias or leave it empty to replace'
-        })
+        const alias: any = await vscode.window.showInputBox({
+            placeHolder: 'Enter an alias or leave it empty to replace',
+        });
 
         if (alias === undefined) {
-            return
+            return;
         }
 
-        if (this.hasConflict(useStatements, alias)) {
-            this.showErrorMessage('This alias is already in use.')
+        if (alias !== '') {
+            if (this.hasAliasConflict(useStatements, alias)) {
+                this.showErrorMessage(`alias : '${alias}' is already in use.`);
 
-            this.insertAsAlias(selection, fqcn, useStatements, declarationLines)
-        } else if (alias !== '') {
-            this.importAndReplaceSelectedClass(selection, alias, fqcn, declarationLines, alias)
-        } else if (alias === '') {
-            this.replaceUseStatement(fqcn, useStatements)
+                return this.insertAsAlias(selection, fqcn, useStatements, declarationLines);
+            }
+
+            return this.importAndReplaceSelectedClass(selection, alias, fqcn, declarationLines, alias);
+        } else {
+            return this.replaceUseStatement(fqcn, useStatements);
         }
     }
 
     async replaceUseStatement(fqcn, useStatements) {
-        let useStatement = useStatements.find((use) => {
-            let className = use.text.match(/(\w+)?;/).pop()
+        const useStatement = useStatements.find((use) => fqcn == use.text);
 
-            return fqcn.endsWith(className)
-        })
-
-        await this.activeEditor()?.edit((textEdit) => {
+        await this.EDITOR?.edit((textEdit) => {
             textEdit.replace(
-                new vscode.Range(useStatement.line, 0, useStatement.line, useStatement.text.length),
-                `use ${fqcn};`
-            )
-        })
+                new vscode.Range(useStatement.line, 0, useStatement.line, useStatement.text.length + 4),
+                `use ${fqcn}`,
+            );
+        });
 
         if (this.config('autoSort')) {
-            this.sortImports()
+            await this.sortImports();
         }
-    }
-
-    async replaceNamespaceStatement(namespace, line) {
-        let realLine = line - 1
-        let text: any = this.activeEditor()?.document.lineAt(realLine).text
-        let newNs = text.replace(/namespace (.+)/, namespace)
-
-        await this.activeEditor()?.edit((textEdit) => {
-            textEdit.replace(
-                new vscode.Range(realLine, 0, realLine, text.length),
-                newNs.trim()
-            )
-        })
     }
 
     async importAndReplaceSelectedClass(selection: any, replacingClassName: string, fqcn: any, declarationLines: any, alias = null) {
-        await this.changeSelectedClass(selection, replacingClassName, false)
+        await this.changeSelectedClass(selection, replacingClassName, false);
 
-        this.insert(fqcn, declarationLines, alias)
+        this.insert(fqcn, declarationLines, alias);
     }
 
     async expandCommand(selection) {
-        let resolving = this.resolving(selection)
+        const resolving = this.resolving(selection);
 
         if (resolving === null) {
-            return this.showErrorMessage('No class is selected.')
+            return this.showErrorMessage('No class is selected.');
         }
 
-        let files = await this.findFiles(resolving)
-        let namespaces = await this.findNamespaces(resolving, files)
-        let fqcn = await this.pickClass(namespaces)
+        const files = await this.findFiles(resolving);
+        const namespaces = await this.findNamespaces(resolving, files);
+        const fqcn = await this.pickClass(namespaces);
 
-        this.changeSelectedClass(selection, fqcn, true)
+        this.changeSelectedClass(selection, fqcn, true);
     }
 
     async changeSelectedClass(selection, fqcn, prependBackslash = false) {
-        let editor: any = this.activeEditor()
+        const editor: any = this.EDITOR;
 
         await editor.edit((textEdit) => {
+            const [useStatements] = this.getDeclarations();
+            const useStatement = useStatements.find((item) => item.text == fqcn);
+
             textEdit.replace(
                 editor.document.getWordRangeAtPosition(selection.active, regexWordWithNamespace),
-                (prependBackslash && this.config('leadingSeparator') ? '\\' : '') + fqcn
-            )
-        })
+                (prependBackslash && this.config('leadingSeparator') ? '\\' : '') + fqcn,
+            );
 
-        let newPosition = new vscode.Position(selection.active.line, selection.active.character)
+            textEdit.delete(new vscode.Range(
+                useStatement.line,
+                0,
+                useStatement.line + 1,
+                0,
+            ));
+        });
 
-        editor.selection = new vscode.Selection(newPosition, newPosition)
+        const newPosition = new vscode.Position(selection.active.line, selection.active.character);
+
+        editor.selection = new vscode.Selection(newPosition, newPosition);
     }
 
-    sortCommand() {
+    async sortCommand() {
+        this.setEditorAndAST();
+
         try {
-            this.sortImports()
+            await this.sortImports();
         } catch (error) {
-            return this.showErrorMessage(error.message)
+            return this.showErrorMessage(error.message);
         }
 
-        this.showMessage('$(check)  Imports are sorted.')
+        this.showMessage('$(check)  Imports are sorted.');
     }
 
     async findFiles(resolving) {
         return vscode.workspace.findFiles(
             `**/${resolving}.php`,
-            this.config('exclude')
-        )
+            this.config('exclude'),
+        );
     }
 
     async findNamespaces(className, files) {
-        let parsedNamespaces = this.parseNamespaces(
+        const parsedNamespaces = this.parseNamespaces(
             await this.getTextDocuments(files, className),
-            className
-        )
+            className,
+        );
 
         if (parsedNamespaces.length === 0) {
-            return this.showErrorMessage('$(circle-slash) The class is not found.')
+            return this.showErrorMessage('$(circle-slash) The class is not found.');
         }
 
-        return parsedNamespaces
+        return parsedNamespaces;
     }
 
     pickClass(namespaces) {
         return new Promise((resolve) => {
             if (namespaces.length === 1) {
                 // Only one namespace found so no need to show picker.
-                return resolve(namespaces[0])
+                return resolve(namespaces[0]);
             }
 
             vscode.window.showQuickPick(namespaces).then((picked) => {
                 if (picked !== undefined) {
-                    resolve(picked)
+                    resolve(picked);
                 }
-            })
-        })
+            });
+        });
     }
 
     async getTextDocuments(files, resolving) {
-        let textDocuments: any = []
+        const textDocuments: any = [];
 
         for (const file of files) {
-            let fileName = path.parse(file.path).name
+            const fileName = path.parse(file.path).name;
 
             if (fileName !== resolving) {
-                continue
+                continue;
             }
 
             textDocuments.push(
-                await vscode.workspace.openTextDocument(file)
-            )
+                await vscode.workspace.openTextDocument(file),
+            );
         }
 
-        return textDocuments
+        return textDocuments;
     }
 
     parseNamespaces(docs, className) {
-        let parsedNamespaces: any = []
+        const parsedNamespaces: any = [];
 
         for (const doc of docs) {
-            for (let line = 0; line < doc.lineCount; line++) {
-                let textLine = doc.lineAt(line).text
+            const _namespace: any = Parser.getNamespaceInfo(doc.getText());
 
-                if (textLine.startsWith('namespace ') || textLine.startsWith('<?php namespace ')) {
-                    let namespace = textLine.match(/^(namespace|(<\?php namespace))\s+(.+)?;/).pop()
-                    let fqcn = `${namespace}\\${className}`
+            if (_namespace) {
+                const fqcn = `${_namespace.name}\\${className}`;
 
-                    if (!parsedNamespaces.includes(fqcn)) {
-                        parsedNamespaces.push(fqcn)
-                        break
-                    }
+                if (!parsedNamespaces.includes(fqcn)) {
+                    parsedNamespaces.push(fqcn);
+                    break;
                 }
             }
         }
 
         // If selected text is a built-in php class add that at the beginning.
         if (BUILT_IN_CLASSES.includes(className)) {
-            parsedNamespaces.unshift(className)
+            parsedNamespaces.unshift(className);
         }
 
         // If namespace can't be parsed but there is a file with the same
         // name of selected text then assuming it's a global class and
         // add that in the parsedNamespaces array as a global class.
         if (parsedNamespaces.length === 0 && docs.length > 0) {
-            parsedNamespaces.push(className)
+            parsedNamespaces.push(className);
         }
 
-        return parsedNamespaces
+        return parsedNamespaces;
     }
 
-    sortImports() {
-        let [useStatements] = this.getDeclarations()
+    async sortImports() {
+        const [useStatements] = this.getDeclarations();
 
         if (useStatements.length <= 1) {
-            throw new Error('PHP Namespace Resolver: Nothing to sort.')
+            throw new Error('PHP Namespace Resolver: Nothing to sort.');
         }
 
         let sortFunction = (a, b) => {
-            if (this.config('sortAlphabetically')) {
-                if (a.text.toLowerCase() < b.text.toLowerCase()) return -1
-                if (a.text.toLowerCase() > b.text.toLowerCase()) return 1
+            const aText = a.text;
+            const bText = b.text;
 
-                return 0
+            const aAlias = a.alias || '';
+            const bAlias = b.alias || '';
+
+            if (this.config('sortAlphabetically')) {
+                if (aText.toLowerCase() < bText.toLowerCase()) return -1;
+                if (aText.toLowerCase() > bText.toLowerCase()) return 1;
+
+                return 0;
             } else {
-                if (a.text.length == b.text.length) {
-                    if (a.text.toLowerCase() < b.text.toLowerCase()) return -1
-                    if (a.text.toLowerCase() > b.text.toLowerCase()) return 1
+                if ((aText.length + aAlias.length) == (bText.length + bAlias.length)) {
+                    if (aText.toLowerCase() < bText.toLowerCase()) return -1;
+                    if (aText.toLowerCase() > bText.toLowerCase()) return 1;
                 }
 
-                return a.text.length - b.text.length
+                return (aText.length + aAlias.length) - (bText.length + bAlias.length);
             }
-        }
+        };
 
         if (this.config('sortNatural')) {
-            let natsort = naturalSort({
-                caseSensitive: true,
-                order: this.config('sortAlphabetically') ? 'ASC' : 'DESC'
-            })
+            const natsort = naturalSort({
+                caseSensitive : true,
+                order         : this.config('sortAlphabetically') ? 'ASC' : 'DESC',
+            });
 
-            sortFunction = (a, b) => {
-                return natsort(a.text, b.text)
-            }
+            sortFunction = (a, b) => natsort(a.text, b.text);
         }
 
-        let sorted = useStatements.slice().sort(sortFunction)
+        const sorted = useStatements.slice().sort(sortFunction);
 
-        this.activeEditor()?.edit((textEdit) => {
-            for (let i = 0; i < sorted.length; i++) {
-                textEdit.replace(
-                    new vscode.Range(useStatements[i].line, 0, useStatements[i].line, useStatements[i].text.length),
-                    sorted[i].text
-                )
-            }
-        })
+        for (let i = 0; i < sorted.length; i++) {
+            await this.EDITOR?.edit((textEdit) => {
+                const sortItem = sorted[i];
+                const item = useStatements[i];
+
+                let itemLength = item.text.length + 4; // 'use '
+
+                if (item.alias) {
+                    itemLength += item.alias.length + 4; // ' as '
+                }
+
+                let sortText = `use ${sortItem.text}`;
+
+                if (sortItem.alias) {
+                    sortText += ` as ${sortItem.alias}`;
+                }
+
+                textEdit.replace(new vscode.Range(item.line, 0, item.line, itemLength), sortText);
+            }, { undoStopBefore: false, undoStopAfter: false });
+        }
+
     }
 
-    activeEditor() {
-        return vscode.window.activeTextEditor
+    setEditorAndAST() {
+        const editor: any = vscode.window.activeTextEditor;
+
+        this.EDITOR = editor;
+        this.CLASS_AST = Parser.buildClassASTFromContent(editor.document.getText());
     }
 
     hasConflict(useStatements, resolving) {
         for (const useStatement of useStatements) {
-            if (useStatement.text.match(/(\w+)?;/).pop() === resolving) {
-                return true
+            if (useStatement.text.endsWith(resolving)) {
+                return true;
             }
         }
 
-        return false
+        return false;
     }
 
-    getUseStatementsArray() {
-        let editor: any = this.activeEditor()
-        let useStatements: any = []
-
-        for (let line = 0; line < editor?.document.lineCount; line++) {
-            let text = editor.document.lineAt(line).text
-
-            if (text.startsWith('use ')) {
-                useStatements.push(
-                    text.match(/(\w+?);/)[1]
-                )
-            } else if (/(class|trait|interface)\s+\w+/.test(text)) {
-                break
+    hasAliasConflict(useStatements, resolving) {
+        for (const useStatement of useStatements) {
+            if (useStatement.alias === resolving) {
+                return true;
             }
         }
 
-        return useStatements
+        return false;
     }
 
-    getDeclarations(pickedClass = null) {
-        let document: any = this.activeEditor()?.document
-        let useStatements: any = []
-        type declarationLines = {
-            PHPTag: any,
-            declare: any,
-            namespace: any,
-            useStatement: any,
-            class: any
-        }
-        let declarationLines: declarationLines = {
-            PHPTag: null,
-            declare: null,
-            namespace: null,
-            useStatement: null,
-            class: null
-        }
+    getDeclarations() {
+        const useStatements: any = [];
+        // @ts-ignore
+        const declarationLines: declarationLines = {
+            PHPTag       : this.CLASS_AST._openTag,
+            declare      : this.CLASS_AST._declare,
+            namespace    : this.CLASS_AST._namespace,
+            useStatement : this.CLASS_AST._use,
+            class        : this.CLASS_AST._class,
+            trait        : this.CLASS_AST._trait,
+        };
 
-        for (let line = 0; line < document.lineCount; line++) {
-            let text = document.lineAt(line).text
+        for (const useStatement of declarationLines.useStatement) {
+            const item = useStatement.items[0];
 
-            if (pickedClass !== null && text === `use ${pickedClass};`) {
-                throw new Error('PHP Namespace Resolver: The class is already imported.')
-            }
-
-            // break if all declarations were found.
-            if (
-                declarationLines.PHPTag &&
-                declarationLines.declare &&
-                declarationLines.namespace &&
-                declarationLines.useStatement &&
-                declarationLines.class
-            ) {
-                break
-            }
-
-            if (text.startsWith('<?php')) {
-                declarationLines.PHPTag = line + 1
-            } else if (text.startsWith('declare')) {
-                // look for last declare statement only
-                declarationLines.declare = line + 1
-            } else if (text.startsWith('namespace ') || text.startsWith('<?php namespace')) {
-                declarationLines.namespace = line + 1
-            } else if (text.startsWith('use ')) {
-                useStatements.push({ text, line })
-                declarationLines.useStatement = line + 1
-            } else if (/(class|trait|interface)\s+\w+/.test(text)) {
-                declarationLines.class = line + 1
-            }
+            useStatements.push({
+                text  : item.name,
+                alias : item.alias?.name,
+                line  : useStatement.loc.start.line - 1,
+            });
         }
 
-        return [useStatements, declarationLines]
+        return [useStatements, declarationLines];
     }
 
     getInsertLine(declarationLines) {
-        let prepend = declarationLines.PHPTag === 0 ? '' : '\n'
-        let append = '\n'
-        let insertLine = declarationLines.PHPTag
+        const _use = declarationLines.useStatement;
 
-        if (prepend === '' && declarationLines.namespace !== null) {
-            prepend = '\n'
+        if (_use) {
+            return _use[0].loc.start.line - 1;
         }
 
-        if (declarationLines.useStatement !== null) {
-            prepend = ''
-            insertLine = declarationLines.useStatement
-        } else if (declarationLines.namespace !== null) {
-            insertLine = declarationLines.namespace
-        } else if (declarationLines.declare !== null) {
-            insertLine = declarationLines.declare
+        const _class = declarationLines.class;
+
+        if (_class) {
+            return _class.loc.start.line - 1;
         }
 
-        // if (declarationLines.class !== null &&
-        //     ((declarationLines.class - declarationLines.useStatement) <= 1) ||
-        //     ((declarationLines.class - declarationLines.namespace) <= 1) ||
-        //     ((declarationLines.class - declarationLines.PHPTag) <= 1)
-        // ) {
-        //     append = '\n\n'
-        // }
+        const namespaceOrTag = declarationLines.namespace || declarationLines.PHPTag;
 
-        return [prepend, append, insertLine]
+        if (namespaceOrTag) {
+            return namespaceOrTag.loc.end.line;
+        }
     }
 
     resolving(selection) {
-        let document: any = this.activeEditor()?.document
-
-        if ((typeof selection) == 'string') {
-            return selection
+        if (typeof selection === "string") {
+            return selection;
         }
 
-        let wordRange = document.getWordRangeAtPosition(selection.active, regexWordWithNamespace)
+        const document: any = this.EDITOR?.document;
+
+        const wordRange = document.getWordRangeAtPosition(selection.active, regexWordWithNamespace);
 
         if (wordRange === undefined) {
-            return
+            return undefined;
         }
 
-        return document.getText(wordRange)
+        return document.getText(wordRange);
     }
 
     showMessage(message, error = false) {
         if (this.config('showMessageOnStatusBar')) {
-            return vscode.window.setStatusBarMessage(message, 3000)
+            return vscode.window.setStatusBarMessage(message, 3000);
         }
 
-        message = message.replace(/\$\(.+?\)\s\s/, '')
+        message = message.replace(/\$\(.+?\)\s\s/, '');
 
         return error
             ? vscode.window.showErrorMessage(`PHP Namespace Resolver: ${message}`)
-            : vscode.window.showInformationMessage(`PHP Namespace Resolver: ${message}`)
+            : vscode.window.showInformationMessage(`PHP Namespace Resolver: ${message}`);
     }
 
     showErrorMessage(message) {
-        return this.showMessage(message, true)
+        return this.showMessage(message, true);
     }
 
     async generateNamespace(returnDontInsert = false, uri = null) {
-        let editor: any = this.activeEditor()
-        let currentUri = uri || editor?.document.uri
-        let currentFilePath = currentUri?.path
-        let workspaceFolder = vscode.workspace.getWorkspaceFolder(currentUri)?.uri.fsPath
+        if (!returnDontInsert) {
+            this.setEditorAndAST();
+        }
+
+        const editor: any = this.EDITOR;
+        const currentUri = uri || editor?.document.uri;
+        const currentFilePath = currentUri?.path;
 
         if (!currentFilePath) {
-            this.showErrorMessage('No file path found, automatic namespace generation failed')
+            this.showErrorMessage('No file path found');
 
-            return undefined
+            return undefined;
         }
 
-        let currentFileDir = path.parse(currentFilePath).dir
+        const workspaceFolder = vscode.workspace.getWorkspaceFolder(currentUri)?.uri.fsPath;
+        const currentFileDir = path.parse(currentFilePath).dir;
 
         // try to retrieve composer file by searching recursively into parent folders of the current file
-        let composerFile = await findUp(COMP_JSON, { cwd: currentFilePath })
+        const composerFile = await findUp(COMP_JSON, { cwd: currentFilePath });
 
         if (!composerFile) {
-            this.showErrorMessage('No composer.json file found, automatic namespace generation failed')
+            this.showErrorMessage('No composer.json file found');
 
-            return undefined
+            return undefined;
         }
 
-        let composerJson = await fs.readJson(composerFile)
-        let psr4 = (composerJson.autoload || {})['psr-4']
+        const composerJson = await fs.readJson(composerFile);
+        let psr4;
 
-        if (psr4 === undefined) {
-            this.showErrorMessage('No psr-4 key in composer.json autoload object, automatic namespace generation failed')
+        try {
+            psr4 = composerJson['autoload']['psr-4'];
+        } catch (error) {
+            this.showErrorMessage('No psr-4 key in composer.json autoload object');
 
-            return undefined
+            return undefined;
         }
 
-        let devPsr4 = (composerJson['autoload-dev'] || {})['psr-4']
+        let devPsr4: any = undefined;
+
+        try {devPsr4 = composerJson['autoload-dev']['psr-4'];} catch (error) { }
 
         if (devPsr4 !== undefined) {
-            psr4 = { ...psr4, ...devPsr4 }
+            psr4 = { ...psr4, ...devPsr4 };
         }
 
-        let currentRelativePath: any = currentFileDir.replace(`${workspaceFolder}/`, '')
+        let currentRelativePath: any = currentFileDir.replace(`${workspaceFolder}/`, '');
 
         // this is a way to always match with psr-4 entries
         if (!currentRelativePath.endsWith('/')) {
-            currentRelativePath += '/'
+            currentRelativePath += '/';
         }
 
-        let namespaceBase: any = Object.keys(psr4)
-            .filter((namespaceBase) => currentRelativePath.lastIndexOf(psr4[namespaceBase]) !== -1)[0]
+        let namespaceBase: any = Object.keys(psr4).find((k) => currentRelativePath.startsWith(psr4[k]));
 
-        currentRelativePath = currentRelativePath.replace(/^\//g, '')
+        if (!namespaceBase) {
+            this.showErrorMessage('path parent directory not found under composer.json autoload object');
 
-        let baseDir = psr4[namespaceBase]
+            return undefined;
+        }
+
+        const baseDir = psr4[namespaceBase];
 
         if (baseDir == currentRelativePath) {
-            currentRelativePath = null
+            currentRelativePath = null;
         } else {
             currentRelativePath = currentRelativePath
                 .replace(baseDir, '')
                 .replace(/\/$/g, '')
-                .replace(/\//g, '\\')
+                .replace(/\//g, '\\');
         }
 
-        namespaceBase = namespaceBase ? namespaceBase.replace(/\\$/g, '') : null
+        namespaceBase = namespaceBase.replace(/\\$/g, '');
 
         if (!namespaceBase) {
             if (!returnDontInsert) {
-                this.showErrorMessage('no namespace found for current file parent directory')
+                this.showErrorMessage('no namespace found for current file parent directory');
             }
 
-            return undefined
+            return undefined;
         }
 
-        let ns: any = null
-        let lower = namespaceBase.toLowerCase()
+        let ns: any = null;
+        const lower = namespaceBase.toLowerCase();
 
         if (!currentRelativePath || currentRelativePath == lower) { // dir already namespaced
-            ns = namespaceBase
+            ns = namespaceBase;
         } else { // add parent dir/s to base namespace
-            ns = `${namespaceBase}\\${currentRelativePath}`
+            ns = `${namespaceBase}\\${currentRelativePath}`;
         }
 
-        ns = ns.replace(/\\{2,}/g, '\\')
+        ns = ns.replace(/\\{2,}/g, '\\');
 
-        let namespace = '\n' + 'namespace ' + ns + ';' + '\n'
+        const namespace = '\n' + 'namespace ' + ns + ';' + '\n\n';
 
         if (returnDontInsert) {
-            return namespace
+            return namespace;
         }
 
-        let declarationLines: any = {}
+        let declarationLines: any = {};
 
         try {
-            [, declarationLines] = this.getDeclarations()
+            [, declarationLines] = this.getDeclarations();
         } catch (error) {
-            this.showErrorMessage(error.message)
+            this.showErrorMessage(error.message);
 
-            return undefined
+            return undefined;
         }
 
         if (declarationLines.namespace !== null) {
-            this.replaceNamespaceStatement(
-                namespace,
-                declarationLines.namespace
-            )
+            await this.EDITOR?.edit((textEdit) => {
+                textEdit.replace(
+                    Parser.getRangeFromLoc(declarationLines.namespace.loc.start, declarationLines.namespace.loc.end),
+                    namespace,
+                );
+            });
         } else {
-            editor?.edit((textEdit) => {
-                let line = declarationLines.declare || 1
+            let line = declarationLines.PHPTag.loc.start.line;
 
-                textEdit.insert(new vscode.Position(line, 0), namespace)
-            })
+            if (declarationLines.declare !== undefined) {
+                line = declarationLines.declare.loc.end.line;
+            }
+
+            await this.EDITOR?.edit((textEdit) => textEdit.insert(new vscode.Position(line, 0), namespace));
         }
     }
 
     async import() {
-        let selections = this.activeEditor()?.selections
+        this.setEditorAndAST();
 
-        if (selections) {
-            for (const selection of selections) {
-                await this.importCommand(selection)
-            }
+        for (const selection of this.EDITOR.selections) {
+            await this.importCommand(selection);
         }
     }
 
     async expand() {
-        let selections = this.activeEditor()?.selections
+        this.setEditorAndAST();
+
+        const selections = this.EDITOR?.selections;
 
         if (selections) {
             for (const selection of selections) {
-                await this.expandCommand(selection)
+                await this.expandCommand(selection);
             }
         }
     }
 
     config(key): any {
-        return vscode.workspace.getConfiguration('namespaceResolver').get(key)
+        return vscode.workspace.getConfiguration('namespaceResolver').get(key);
     }
 }
