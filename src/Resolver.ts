@@ -39,7 +39,7 @@ export default class Resolver {
     async importAll() {
         this.setEditorAndAST();
 
-        const [useStatements, declarationLines] = this.getDeclarations();
+        const { useStatements, declarationLines } = this.getDeclarations();
         const phpClasses = this.getFileClassesAndTraits(declarationLines);
 
         for (const phpClass of phpClasses) {
@@ -135,7 +135,7 @@ export default class Resolver {
 
     importClass(selection, fqcn, replaceClassAfterImport = false) {
         try {
-            const [useStatements, declarationLines] = this.getDeclarations();
+            const { useStatements, declarationLines } = this.getDeclarations();
             const classBaseName = fqcn.match(/(\w+)/g).pop();
 
             if (this.hasConflict(useStatements, classBaseName)) {
@@ -240,7 +240,7 @@ export default class Resolver {
         const editor: any = this.EDITOR;
 
         await editor.edit((textEdit) => {
-            const [useStatements] = this.getDeclarations();
+            const { useStatements } = this.getDeclarations();
             const useStatement = useStatements.find((item) => item.text == fqcn);
 
             textEdit.replace(
@@ -319,7 +319,7 @@ export default class Resolver {
             }
 
             textDocuments.push(
-                await vscode.workspace.openTextDocument(file),
+                await fs.readFile(file.path),
             );
         }
 
@@ -330,14 +330,13 @@ export default class Resolver {
         const parsedNamespaces: any = [];
 
         for (const doc of docs) {
-            const _namespace: any = Parser.getNamespaceInfo(doc.getText());
+            const _namespace: any = Parser.getNamespaceInfo(doc.toString());
 
             if (_namespace) {
                 const fqcn = `${_namespace.name}\\${className}`;
 
                 if (!parsedNamespaces.includes(fqcn)) {
                     parsedNamespaces.push(fqcn);
-                    break;
                 }
             }
         }
@@ -358,7 +357,7 @@ export default class Resolver {
     }
 
     async sortImports() {
-        const [useStatements] = this.getDeclarations();
+        const { useStatements } = this.getDeclarations();
 
         if (useStatements.length <= 1) {
             throw new Error('PHP Namespace Resolver: Nothing to sort.');
@@ -469,7 +468,10 @@ export default class Resolver {
             });
         }
 
-        return [useStatements, declarationLines];
+        return {
+            useStatements,
+            declarationLines,
+        };
     }
 
     getInsertLine(declarationLines) {
@@ -623,31 +625,29 @@ export default class Resolver {
             return namespace;
         }
 
-        let declarationLines: any = {};
-
         try {
-            [, declarationLines] = this.getDeclarations();
+            const { declarationLines } = this.getDeclarations();
+
+            if (declarationLines.namespace !== null) {
+                await this.EDITOR?.edit((textEdit) => {
+                    textEdit.replace(
+                        Parser.getRangeFromLoc(declarationLines.namespace.loc.start, declarationLines.namespace.loc.end),
+                        namespace,
+                    );
+                });
+            } else {
+                let line = declarationLines.PHPTag.loc.start.line;
+
+                if (declarationLines.declare !== undefined) {
+                    line = declarationLines.declare.loc.end.line;
+                }
+
+                await this.EDITOR?.edit((textEdit) => textEdit.insert(new vscode.Position(line, 0), namespace));
+            }
         } catch (error) {
             this.showErrorMessage(error.message);
 
             return undefined;
-        }
-
-        if (declarationLines.namespace !== null) {
-            await this.EDITOR?.edit((textEdit) => {
-                textEdit.replace(
-                    Parser.getRangeFromLoc(declarationLines.namespace.loc.start, declarationLines.namespace.loc.end),
-                    namespace,
-                );
-            });
-        } else {
-            let line = declarationLines.PHPTag.loc.start.line;
-
-            if (declarationLines.declare !== undefined) {
-                line = declarationLines.declare.loc.end.line;
-            }
-
-            await this.EDITOR?.edit((textEdit) => textEdit.insert(new vscode.Position(line, 0), namespace));
         }
     }
 

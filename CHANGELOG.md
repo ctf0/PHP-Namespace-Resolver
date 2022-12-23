@@ -60,3 +60,8 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 - better api using php-parser
 - remove class import when using expand command
 - show error when importing a class that has a name being used as an alias
+
+## 0.3.1
+
+- fix not showing all available namespaces for selected class
+- use `fs.readFile` instead of `vscode.openDocument`
