@@ -1,22 +1,25 @@
 import * as vscode from 'vscode';
+import checkForNamespaces from './NamespaceCheck';
 import Resolver from './Resolver';
-
-const PKG_NAME = 'namespaceResolver';
 
 export async function activate(context) {
     const resolver = new Resolver();
+    const createDiagnosticCollection = vscode.languages.createDiagnosticCollection('PHP Namespace Resolver');
 
     context.subscriptions.push(
-        vscode.commands.registerCommand(`${PKG_NAME}.import`, async () => await resolver.import()),
-        vscode.commands.registerCommand(`${PKG_NAME}.expand`, async () => await resolver.expand()),
-        vscode.commands.registerCommand(`${PKG_NAME}.sort`, async () => await resolver.sortCommand()),
-        vscode.commands.registerCommand(`${PKG_NAME}.importAll`, async () => await resolver.importAll()),
-        vscode.commands.registerCommand(`${PKG_NAME}.generateNamespace`, async () => await resolver.generateNamespace()),
+        createDiagnosticCollection,
+        vscode.commands.registerCommand(`${resolver.PKG_NAME}.import`, async () => await resolver.import()),
+        vscode.commands.registerCommand(`${resolver.PKG_NAME}.expand`, async () => await resolver.expand()),
+        vscode.commands.registerCommand(`${resolver.PKG_NAME}.sort`, async () => await resolver.sortCommand()),
+        vscode.commands.registerCommand(`${resolver.PKG_NAME}.importAll`, async () => await resolver.importAll()),
+        vscode.commands.registerCommand(`${resolver.PKG_NAME}.generateNamespace`, async () => await resolver.generateNamespace()),
+        vscode.commands.registerCommand(`${resolver.PKG_NAME}.checkForNamespaces`, async () => await checkForNamespaces(resolver, createDiagnosticCollection)),
+
         vscode.workspace.onWillSaveTextDocument(async (event) => {
             if (
                 event &&
                 event.document.languageId === 'php' &&
-                resolver.config('sortOnSave')
+                resolver.config('sort.onSave')
             ) {
                 await resolver.sortCommand();
             }

@@ -65,3 +65,12 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 
 - fix not showing all available namespaces for selected class
 - use `fs.readFile` instead of `vscode.openDocument`
+
+## 0.4.0
+
+- add new configs
+- configs are now separated into categories, plz update your settings
+- try to load php builtin namespaces dynamically & fall back to hardcoded classes when not possible
+- if use statement already exists, no changes will be made
+- support importing/expanding class FQN when its called with a partial FQN ex.`Rules\Password` + `use Illuminate\Validation\Rules;`
+- you will get an error msg if a use statement already exists with a similar class name of what u r trying to import ex.`use Illuminate\Facade\Password;` + importing ex.`Rules\Password`

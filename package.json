@@ -2,7 +2,7 @@
     "name": "php-namespace-resolver",
     "displayName": "PHP Namespace Resolver",
     "description": "Import and expand php namespaces",
-    "version": "0.3.1",
+    "version": "0.4.0",
     "publisher": "ctf0",
     "author": "ctf0",
     "repository": "https://github.com/ctf0/PHP-Namespace-Resolver",
@@ -25,35 +25,41 @@
         "namespaceResolver.importAll",
         "namespaceResolver.expand",
         "namespaceResolver.sort",
-        "namespaceResolver.generateNamespace"
+        "namespaceResolver.generateNamespace",
+        "onStartupFinished"
     ],
     "main": "./out/main",
     "icon": "images/icon.png",
     "contributes": {
         "commands": [
             {
-                "title": "Import Class",
                 "command": "namespaceResolver.import",
+                "title": "Import Class",
                 "category": "PHP Namespace Resolver"
             },
             {
-                "title": "Import All Classes",
                 "command": "namespaceResolver.importAll",
+                "title": "Import All Classes",
                 "category": "PHP Namespace Resolver"
             },
             {
-                "title": "Expand Class",
                 "command": "namespaceResolver.expand",
+                "title": "Expand Class",
                 "category": "PHP Namespace Resolver"
             },
             {
-                "title": "Sort Imports",
                 "command": "namespaceResolver.sort",
+                "title": "Sort Imports",
                 "category": "PHP Namespace Resolver"
             },
             {
-                "title": "Generate namespace for this file",
                 "command": "namespaceResolver.generateNamespace",
+                "title": "Generate namespace for this file",
+                "category": "PHP Namespace Resolver"
+            },
+            {
+                "command": "namespaceResolver.checkForNamespaces",
+                "title": "Check for namespaces project wide",
                 "category": "PHP Namespace Resolver"
             }
         ],
@@ -132,12 +138,14 @@
                 {
                     "command": "namespaceResolver.generateNamespace",
                     "when": "editorLangId == php"
+                },
+                {
+                    "command": "namespaceResolver.checkForNamespaces"
                 }
             ]
         },
         "configuration": {
-            "type": "object",
-            "title": "PHP Namespace Resolver extension configuration",
+            "title": "PHP Namespace Resolver",
             "properties": {
                 "namespaceResolver.exclude": {
                     "type": "string",
@@ -149,22 +157,22 @@
                     "default": false,
                     "description": "Show message on status bar instead of notification box"
                 },
-                "namespaceResolver.autoSort": {
+                "namespaceResolver.sort.auto": {
                     "type": "boolean",
                     "default": true,
                     "description": "Auto sort after imports"
                 },
-                "namespaceResolver.sortOnSave": {
+                "namespaceResolver.sort.onSave": {
                     "type": "boolean",
                     "default": false,
                     "description": "Auto sort when a file is saved"
                 },
-                "namespaceResolver.sortAlphabetically": {
+                "namespaceResolver.sort.alphabetically": {
                     "type": "boolean",
                     "default": false,
                     "description": "Sort imports in alphabetical order instead of line length"
                 },
-                "namespaceResolver.sortNatural": {
+                "namespaceResolver.sort.natural": {
                     "type": "boolean",
                     "default": false,
                     "description": "Sort imports using a 'natural order' algorithm"
@@ -173,6 +181,51 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Expand class with leading namespace separator"
+                },
+                "namespaceResolver.php.command": {
+                    "type": "string",
+                    "default": "php",
+                    "description": "php command path"
+                },
+                "namespaceResolver.php.builtIns": {
+                    "type": "array",
+                    "default": [
+                        "get_declared_classes()",
+                        "get_declared_interfaces()"
+                    ],
+                    "items": {
+                        "type": "string"
+                    },
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "description": "php methods to get builtin/extension classes & interfaces"
+                },
+                "namespaceResolver.checkForNamespaces.classMapFileGlob": {
+                    "type": "string",
+                    "default": "vendor/**/composer/autoload_classmap.php",
+                    "description": "composer autoload_classmap file(s) path glob"
+                },
+                "namespaceResolver.checkForNamespaces.rg.command": {
+                    "type": "string",
+                    "default": "rg",
+                    "markdownDescription": "ripgrep command path (require [ripgrep](https://github.com/BurntSushi/ripgrep#installation))"
+                },
+                "namespaceResolver.checkForNamespaces.rg.excludeDirs": {
+                    "type": "array",
+                    "default": [
+                        "vendor",
+                        "stubs",
+                        "bootstrap",
+                        "resources",
+                        "storage",
+                        "lang"
+                    ],
+                    "items": {
+                        "type": "string"
+                    },
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "markdownDescription": "exclude directories from namespace use call search\n\n(.gitignore contents are already excluded)"
                 }
             }
         }
@@ -192,8 +245,11 @@
         "typescript": "^4.6.3"
     },
     "dependencies": {
+        "escape-string-regexp": "^5.0.0",
+        "execa": "^6.1.0",
         "find-up": "^6.3.0",
         "fs-extra": "^11.1.0",
+        "lodash.groupby": "^4.6.0",
         "node-natural-sort": "^0.8.6",
         "php-parser": "^3.1.2"
     }
