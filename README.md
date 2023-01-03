@@ -9,8 +9,28 @@ based on https://github.com/MehediDracula/PHP-Namespace-Resolver which seems aba
 - generate name space should work correctly for both root & sub dirs, if u have issues plz open a ticket.
 - expose an API for other extensions to use
 - check for namespaces project wide
+- check [CHANGELOG](./CHANGELOG.md)
 
-### Check for namespaces project wide
+### \# API
+
+[Read More](https://code.visualstudio.com/api/references/vscode-api#extensions)
+
+```js
+const nsResolverExtension = vscode.extensions.getExtension('ctf0.php-namespace-resolver');
+
+if (nsResolverExtension == null) {
+    throw new Error("'ctf0.php-namespace-resolver' is required");
+}
+
+const NS_EXTENSION_PROVIDER = await nsResolverExtension.activate();
+
+// now u can use it like so
+
+NS_EXTENSION_PROVIDER.getNamespace(vscode.window.activeTextEditor.document.uri) // get namespace by file uri
+NS_EXTENSION_PROVIDER.insertNamespace() // insert namespace in current active file
+```
+
+### \# Check for namespaces project wide
 
 - make sure to run `composer dump` first & fix any reported issues.
 - run `PHP Namespace Resolver: Check for namespaces project wide`

@@ -2,7 +2,7 @@
     "name": "php-namespace-resolver",
     "displayName": "PHP Namespace Resolver",
     "description": "Import and expand php namespaces",
-    "version": "0.4.0",
+    "version": "0.4.1",
     "publisher": "ctf0",
     "author": "ctf0",
     "repository": "https://github.com/ctf0/PHP-Namespace-Resolver",
@@ -231,11 +231,11 @@
         }
     },
     "scripts": {
-        "vscode:prepublish": "npm run esbuild-base -- --minify",
+        "vscode:prepublish": "npm run esbuild-base -- --pure:console.log --minify",
         "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
         "esbuild": "npm run esbuild-base -- --sourcemap",
         "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
-        "watch": "npm run vscode:prepublish"
+        "watch": "npm run esbuild"
     },
     "devDependencies": {
         "@types/fs-extra": "^9.0.13",
