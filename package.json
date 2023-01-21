@@ -2,7 +2,7 @@
     "name": "php-namespace-resolver",
     "displayName": "PHP Namespace Resolver",
     "description": "Import and expand php namespaces",
-    "version": "0.4.1",
+    "version": "0.4.2",
     "publisher": "ctf0",
     "author": "ctf0",
     "repository": "https://github.com/ctf0/PHP-Namespace-Resolver",
@@ -21,11 +21,6 @@
     ],
     "activationEvents": [
         "workspaceContains:composer.json",
-        "namespaceResolver.import",
-        "namespaceResolver.importAll",
-        "namespaceResolver.expand",
-        "namespaceResolver.sort",
-        "namespaceResolver.generateNamespace",
         "onStartupFinished"
     ],
     "main": "./out/main",
@@ -225,7 +220,20 @@
                     },
                     "minItems": 1,
                     "uniqueItems": true,
-                    "markdownDescription": "exclude directories from namespace use call search\n\n(.gitignore contents are already excluded)"
+                    "markdownDescription": "exclude directories from namespace import search\n\n(.gitignore contents are already excluded)"
+                },
+                "namespaceResolver.checkForNamespaces.rg.excludeFiles": {
+                    "type": "array",
+                    "default": [
+                        "_ide_helper.php",
+                        ".phpstorm.meta.php"
+                    ],
+                    "items": {
+                        "type": "string"
+                    },
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "markdownDescription": "exclude files from namespace import search\n\n(.gitignore contents are already excluded)"
                 }
             }
         }
@@ -238,11 +246,11 @@
         "watch": "npm run esbuild"
     },
     "devDependencies": {
-        "@types/fs-extra": "^9.0.13",
-        "@types/node": "^18.11.4",
+        "@types/fs-extra": "^11.0.1",
+        "@types/node": "^18.11.18",
         "@types/vscode": "^1.68.0",
-        "esbuild": "^0.15.13",
-        "typescript": "^4.6.3"
+        "esbuild": "^0.17.3",
+        "typescript": "^4.9.4"
     },
     "dependencies": {
         "escape-string-regexp": "^5.0.0",
@@ -250,7 +258,7 @@
         "find-up": "^6.3.0",
         "fs-extra": "^11.1.0",
         "lodash.groupby": "^4.6.0",
-        "node-natural-sort": "^0.8.6",
-        "php-parser": "^3.1.2"
+        "natural-orderby": "^3.0.2",
+        "php-parser": "^3.1.3"
     }
 }

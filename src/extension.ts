@@ -27,7 +27,7 @@ export async function activate(context) {
     );
 
     return {
-        getNamespace(uri = null) {
+        getNamespace(uri?: vscode.Uri) {
             return resolver.generateNamespace(true, uri);
         },
         insertNamespace() {

@@ -35,3 +35,4 @@ NS_EXTENSION_PROVIDER.insertNamespace() // insert namespace in current active fi
 - make sure to run `composer dump` first & fix any reported issues.
 - run `PHP Namespace Resolver: Check for namespaces project wide`
     - note that commented out FQN will show up in the problems panel as well, the cmnd lists all the namespaces that are unknown regardless of its position
+    - also you might get positive-negative results because of nested namespaces, which will need more work to check if the namespace correspond to an actual file path or not

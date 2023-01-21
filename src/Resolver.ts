@@ -1,7 +1,7 @@
 import { execaCommand } from 'execa';
 import { findUp } from 'find-up';
 import fs from 'fs-extra';
-import naturalSort from 'node-natural-sort';
+import { compare } from 'natural-orderby';
 import path from 'node:path';
 import * as vscode from 'vscode';
 import BUILT_IN_CLASSES_FB from './classes';
@@ -77,7 +77,7 @@ export default class Resolver {
         if (_class?.implements !== null) {
             phpClasses = phpClasses.concat(
                 _class.implements
-                    .filter((item) => item.resolution == "uqn")
+                    .filter((item) => item.resolution == 'uqn')
                     .map((item) => item.name),
             );
         }
@@ -95,7 +95,7 @@ export default class Resolver {
         const methods = _class.body?.filter((item) => item.kind === 'method' && item.arguments.length);
 
         return methods?.map((item) => item.arguments
-            .filter((arg) => arg.type.kind == 'name' && arg.type.resolution == "uqn")
+            .filter((arg) => arg.type.kind == 'name' && arg.type.resolution == 'uqn')
             .map((arg) => arg.type.name));
     }
 
@@ -426,9 +426,8 @@ export default class Resolver {
         };
 
         if (this.config('sort.natural')) {
-            const natsort = naturalSort({
-                caseSensitive : true,
-                order         : alpha ? 'ASC' : 'DESC',
+            const natsort = compare({
+                order: alpha ? 'asc' : 'desc',
             });
 
             sortFunction = (a, b) => natsort(a.text, b.text);
@@ -537,7 +536,7 @@ export default class Resolver {
     }
 
     resolving(selection) {
-        if (typeof selection === "string") {
+        if (typeof selection === 'string') {
             return selection;
         }
 
@@ -571,7 +570,7 @@ export default class Resolver {
     /**
      * @param uri: ?vscode.Uri
      */
-    async generateNamespace(returnDontInsert = false, uri = null) {
+    async generateNamespace(returnDontInsert = false, uri?: vscode.Uri) {
         if (!returnDontInsert) {
             this.setEditorAndAST();
         }

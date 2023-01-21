@@ -8,11 +8,10 @@
  * add the unknown statements to the diagnose panel
  */
 
-import escapeStringRegexp from 'escape-string-regexp';
 import { execa } from 'execa';
+import groupBy from 'lodash.groupby';
 import * as vscode from 'vscode';
 import Resolver from './Resolver';
-const _groupBy = require('lodash.groupby');
 
 export default async function checkForNamespaces(resolver: Resolver, createDiagnosticCollection: vscode.DiagnosticCollection) {
     if (resolver.CWD) {
@@ -85,24 +84,32 @@ async function getAutoloadFileData(resolver: Resolver): Promise<any> {
 
 async function searchAllFilesForImports(resolver: Resolver): Promise<any> {
     const rgCommand = resolver.config('checkForNamespaces.rg.command');
-    const rgExcludeDirs = resolver.config('checkForNamespaces.rg.excludeDirs').map((item) => escapeStringRegexp(item)).join(',');
+    const rgExcludeDirs = resolver
+        .config('checkForNamespaces.rg.excludeDirs')
+        .join(',');
+    const rgExcludeFiles = resolver
+        .config('checkForNamespaces.rg.excludeFiles')
+        .join(',');
 
-    if (!rgCommand || !rgExcludeDirs) {
-        throw new Error('config required : rgCommand,rgExcludeDirs');
+    if (!rgCommand || !rgExcludeDirs || !rgExcludeFiles) {
+        throw new Error('config required : rgCommand,excludeDirs,excludeFiles');
     }
 
-    const { stdout } = await execa(rgCommand, [
-        "'((namespace|use) )?\\\\?(\\w+\\\\)+\\w+(?=[ ;:\\(])'",
+    const args = [
+        '\'((namespace|use) )?\\\\?(\\w+\\\\)+\\w+(?=[ ;:\\(])\'',
         '--mmap',
         '--pcre2',
         '--no-messages',
         '--line-number',
         '--only-matching',
-        "--glob='!*blade.php'",
+        '--glob=\'**/*.php\'',
+        '--glob=\'!*.blade.php\'',
         `--glob='!{${rgExcludeDirs}}'`,
-        "--glob='**/*.php'",
-        "./",
-    ], {
+        `--glob='!{${rgExcludeFiles}}'`,
+        './',
+    ];
+
+    const { stdout } = await execa(rgCommand, args, {
         cwd   : resolver.CWD,
         shell : vscode.env.shell,
     });
@@ -164,7 +171,7 @@ async function searchAllFilesForImports(resolver: Resolver): Promise<any> {
 }
 
 function findNonFoundNamespaces(appNamespaces, importsFiles) {
-    importsFiles = _groupBy(importsFiles, 'import');
+    importsFiles = groupBy(importsFiles, 'import');
     const list: any = [];
 
     for (const namespace of Object.keys(importsFiles)) {

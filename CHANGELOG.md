@@ -74,3 +74,7 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 - if use statement already exists, no changes will be made
 - support importing/expanding class FQN when its called with a partial FQN ex.`Rules\Password` + `use Illuminate\Validation\Rules;`
 - you will get an error msg if a use statement already exists with a similar class name of what u r trying to import ex.`use Illuminate\Facade\Password;` + importing ex.`Rules\Password`
+
+## 0.4.2
+
+- fix not parsing of other types than class
