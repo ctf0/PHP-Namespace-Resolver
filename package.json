@@ -2,7 +2,7 @@
     "name": "php-namespace-resolver",
     "displayName": "PHP Namespace Resolver",
     "description": "Import and expand php namespaces",
-    "version": "0.4.2",
+    "version": "0.4.3",
     "publisher": "ctf0",
     "author": "ctf0",
     "repository": "https://github.com/ctf0/PHP-Namespace-Resolver",
@@ -177,6 +177,11 @@
                     "default": true,
                     "description": "Expand class with leading namespace separator"
                 },
+                "namespaceResolver.forceReplaceSimilarImports": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "when `false` both new & old will be kept, when `true` old will be replaced with new"
+                },
                 "namespaceResolver.php.command": {
                     "type": "string",
                     "default": "php",
@@ -249,7 +254,7 @@
         "@types/fs-extra": "^11.0.1",
         "@types/node": "^18.11.18",
         "@types/vscode": "^1.68.0",
-        "esbuild": "^0.17.3",
+        "esbuild": "^0.17.5",
         "typescript": "^4.9.4"
     },
     "dependencies": {

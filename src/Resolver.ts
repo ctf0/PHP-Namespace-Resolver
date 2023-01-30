@@ -18,7 +18,11 @@ export default class Resolver {
     PKG_NAME = 'namespaceResolver';
 
     public constructor() {
-        this.CWD = vscode.workspace.workspaceFolders![0].uri.fsPath || '';
+        try {
+            this.CWD = vscode.workspace.workspaceFolders![0].uri.fsPath;
+        } catch (error) {
+            this.CWD = '';
+        }
 
         this.getPHPClassList();
     }
@@ -27,7 +31,7 @@ export default class Resolver {
         const className = this.resolving(selection);
 
         if (className === undefined) {
-            return this.showErrorMessage('No class is selected.');
+            return this.showMessage('No class is selected.', true);
         }
 
         let fqcn;
@@ -159,7 +163,7 @@ export default class Resolver {
             }
 
             if (this.hasAliasConflict(useStatements, classBaseName)) {
-                return this.showErrorMessage(`class : '${classBaseName}' is used as alias.`);
+                return this.showMessage(`class : '${classBaseName}' is used as alias.`, true);
             }
 
             if (replaceClassAfterImport) {
@@ -168,7 +172,7 @@ export default class Resolver {
 
             return this.insert(fqcn, declarationLines);
         } catch (error) {
-            return this.showErrorMessage(error.message);
+            return this.showMessage(error.message, true);
         }
     }
 
@@ -209,7 +213,7 @@ export default class Resolver {
         }
 
         if (this.hasAliasConflict(useStatements, alias)) {
-            await this.showErrorMessage(`alias : '${alias}' is already in use.`);
+            await this.showMessage(`alias : '${alias}' is already in use.`, true);
 
             return this.insertAsAlias(selection, fqcn, useStatements, declarationLines);
         }
@@ -219,22 +223,38 @@ export default class Resolver {
 
     async insertNewUseStatement(selection, fqcn, useStatements, declarationLines) {
         if (useStatements.find((use) => use.text == fqcn)) {
-            await this.showErrorMessage(`'${fqcn}' already exists`);
+            return this.showMessage(`'${fqcn}' already exists`, true);
         }
 
         const editor = this.EDITOR;
-        const className = fqcn.replace(/\w+\\/g, '');
-        const similarImport = useStatements.find((use) => use.text.endsWith(className) || fqcn.startsWith(use.text));
+        const classBaseName = fqcn.match(/(\w+)/g).pop();
+        const similarImport = useStatements.find((use) => use.text.endsWith(classBaseName) || fqcn.startsWith(use.text));
 
         if (similarImport) {
-            this.showErrorMessage(`use statement '${similarImport.text}' already exists`);
+            if (this.config('forceReplaceSimilarImports')) {
+                let useCall = `use ${fqcn}`;
+
+                if (similarImport.alias) {
+                    useCall = `${useCall} as ${similarImport.alias}`;
+                }
+
+                return editor.edit((textEdit) => {
+                    textEdit.replace(
+                        // @ts-ignore
+                        editor.document.lineAt(similarImport.line).range,
+                        `${useCall};`,
+                    );
+                }, { undoStopBefore: false, undoStopAfter: false });
+            } else {
+                return this.showMessage(`use statement '${similarImport.text}' already exists`, true);
+            }
         }
 
         await editor.edit((textEdit) => {
             textEdit.replace(
                 // @ts-ignore
                 editor.document.getWordRangeAtPosition(selection.active, regexWordWithNamespace),
-                className,
+                classBaseName,
             );
         }, { undoStopBefore: false, undoStopAfter: false });
 
@@ -252,7 +272,7 @@ export default class Resolver {
         let className = resolving;
 
         if (resolving === null) {
-            return this.showErrorMessage('No class is selected.');
+            return this.showMessage('No class is selected.', true);
         }
 
         if (/\w+\\/.test(resolving)) {
@@ -301,7 +321,7 @@ export default class Resolver {
 
             await this.showMessage('$(check)  Imports are sorted.');
         } catch (error) {
-            return this.showErrorMessage(error.message);
+            return this.showMessage(error.message, true);
         }
     }
 
@@ -319,7 +339,7 @@ export default class Resolver {
         );
 
         if (parsedNamespaces.length === 0) {
-            return this.showErrorMessage('$(circle-slash) The class is not found.');
+            return this.showMessage('$(circle-slash) The class is not found.', true);
         }
 
         return parsedNamespaces;
@@ -551,7 +571,7 @@ export default class Resolver {
         return document.getText(wordRange);
     }
 
-    async showMessage(message, error = false) {
+    async showMessage(message, error = false): Promise<string | vscode.Disposable | undefined> {
         if (this.config('showMessageOnStatusBar')) {
             return vscode.window.setStatusBarMessage(message, 3000);
         }
@@ -561,10 +581,6 @@ export default class Resolver {
         return error
             ? vscode.window.showErrorMessage(`PHP Namespace Resolver: ${message}`)
             : vscode.window.showInformationMessage(`PHP Namespace Resolver: ${message}`);
-    }
-
-    showErrorMessage(message) {
-        return this.showMessage(message, true);
     }
 
     /**
@@ -585,12 +601,19 @@ export default class Resolver {
         try {
             composerFile = await this.findComposerFileByUri(currentUri, returnDontInsert);
             psr4 = await this.getComposerFileData(composerFile, returnDontInsert);
-            ns = await this.createNamespace(currentUri, psr4, returnDontInsert);
+            ns = await this.createNamespace(
+                currentUri,
+                {
+                    psrData          : psr4,
+                    composerFilePath : composerFile,
+                },
+                returnDontInsert,
+            );
         } catch (error) {
             return undefined;
         }
 
-        const namespace = '\n' + 'namespace ' + ns + ';' + '\n\n';
+        const namespace = '\n' + 'namespace ' + ns + ';' + '\n';
 
         if (returnDontInsert) {
             return namespace;
@@ -619,7 +642,7 @@ export default class Resolver {
                 );
             }
         } catch (error) {
-            await this.showErrorMessage(error.message);
+            await this.showMessage(error.message, true);
 
             return undefined;
         }
@@ -630,7 +653,7 @@ export default class Resolver {
 
         if (!composerFile) {
             if (!ignoreError) {
-                await this.showErrorMessage('No composer.json file found');
+                await this.showMessage('No composer.json file found', true);
             }
 
             throw new Error();
@@ -647,7 +670,7 @@ export default class Resolver {
             psr4 = composerJson['autoload']['psr-4'];
         } catch (error) {
             if (!ignoreError) {
-                await this.showErrorMessage('No psr-4 key in composer.json autoload object');
+                await this.showMessage('No psr-4 key in composer.json autoload object', true);
             }
 
             throw new Error();
@@ -664,12 +687,13 @@ export default class Resolver {
         return psr4;
     }
 
-    async createNamespace(currentUri: vscode.Uri, psr4, ignoreError = true): Promise<any> {
+    async createNamespace(currentUri: vscode.Uri, composer: { psrData?: any; composerFilePath: string; }, ignoreError = true): Promise<any> {
         const currentFilePath = currentUri?.path;
-        const workspaceFolder = vscode.workspace.getWorkspaceFolder(currentUri)?.uri.fsPath;
+        const composerFileDir = this.getFileDirFromPath(composer.composerFilePath);
         const currentFileDir = this.getFileDirFromPath(currentFilePath);
+        const psr4 = composer.psrData;
 
-        let currentRelativePath: any = currentFileDir.replace(`${workspaceFolder}/`, '');
+        let currentRelativePath: any = currentFileDir.replace(`${composerFileDir}/`, '');
 
         // this is a way to always match with psr-4 entries
         if (!currentRelativePath.endsWith('/')) {
@@ -680,7 +704,7 @@ export default class Resolver {
 
         if (!namespaceBase) {
             if (!ignoreError) {
-                await this.showErrorMessage('path parent directory not found under composer.json autoload object');
+                await this.showMessage('path parent directory is not found under composer.json autoload object', true);
             }
 
             throw new Error();
@@ -701,16 +725,16 @@ export default class Resolver {
 
         if (!namespaceBase) {
             if (!ignoreError) {
-                await this.showErrorMessage('no namespace found for current file parent directory');
+                await this.showMessage('no namespace found for current file parent directory', true);
             }
 
             throw new Error();
         }
 
         let ns: any = null;
-        const lower = namespaceBase.toLowerCase();
+        const namespaceBaseLower = namespaceBase.toLowerCase();
 
-        if (!currentRelativePath || currentRelativePath == lower) { // dir already namespaced
+        if (!currentRelativePath || currentRelativePath == namespaceBaseLower) { // dir already namespaced
             ns = namespaceBase;
         } else { // add parent dir/s to base namespace
             ns = `${namespaceBase}\\${currentRelativePath}`;

@@ -16,12 +16,12 @@ export function buildClassASTFromContent(content: string) {
     try {
         const AST = Parser.parseCode(content, '*.php');
 
-        const _tag: any = AST.tokens?.find((item: any) => item[0] == 'T_OPEN_TAG');
-        const _declare: any = AST.children?.find((item: any) => item.kind == 'declare');
-        const _namespace: any = AST.children?.find((item: any) => item.kind == 'namespace');
-        const _use: any = (_namespace || AST).children?.filter((item: any) => item.kind == 'usegroup');
-        const _class: any = (_namespace || AST).children?.find((item: any) => ['class', 'enum', 'interface', 'trait'].includes(item.kind));
-        const _trait: any = _class?.body?.find((item: any) => item.kind == 'traituse')?.traits;
+        const _tag: any = AST.tokens!.find((item: any) => item[0] == 'T_OPEN_TAG');
+        const _declare: any = AST.children!.find((item: any) => item.kind == 'declare');
+        const _namespace: any = AST.children!.find((item: any) => item.kind == 'namespace');
+        const _use: any = (_namespace || AST).children!.filter((item: any) => item.kind == 'usegroup');
+        const _class: any = (_namespace || AST).children!.find((item: any) => ['class', 'enum', 'interface', 'trait'].includes(item.kind));
+        const _trait: any = _class!.body!.find((item: any) => item.kind == 'traituse')?.traits;
 
         return {
             _openTag: {
@@ -37,7 +37,7 @@ export function buildClassASTFromContent(content: string) {
                 },
             },
             _declare   : _declare,
-            _namespace : _namespace ? getNamespaceLoc(_namespace, _use[0] || _class) : null,
+            _namespace : _namespace ? getNamespaceLoc(_namespace, _use![0] || _class) : null,
             _class     : _class,
             _use       : _use,
             _trait     : _trait,
