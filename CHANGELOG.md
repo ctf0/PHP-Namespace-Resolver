@@ -84,3 +84,7 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 - fix giving error when opening invalid workspace
 - fix not generating namespace
 - add new option `namespaceResolver.forceReplaceSimilarImports` to replace similar class import instead of keeping both (old & new)
+
+## 0.4.4
+
+- group menu items to submenu to save space in the context menu

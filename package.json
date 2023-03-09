@@ -2,7 +2,7 @@
     "name": "php-namespace-resolver",
     "displayName": "PHP Namespace Resolver",
     "description": "Import and expand php namespaces",
-    "version": "0.4.3",
+    "version": "0.4.4",
     "publisher": "ctf0",
     "author": "ctf0",
     "repository": "https://github.com/ctf0/PHP-Namespace-Resolver",
@@ -85,32 +85,44 @@
                 "when": "editorLangId == php"
             }
         ],
+        "submenus": [
+            {
+                "id": "namespaceresolver.editor.context",
+                "label": "PHP Namespace Resolver"
+            }
+        ],
         "menus": {
             "editor/context": [
                 {
+                    "submenu": "namespaceresolver.editor.context",
+                    "group": "namespaceresolver"
+                }
+            ],
+            "namespaceresolver.editor.context": [
+                {
                     "when": "editorLangId == php",
                     "command": "namespaceResolver.import",
-                    "group": "0_namespace_resolver@1"
+                    "group": "namespaceresolver"
                 },
                 {
                     "when": "editorLangId == php",
                     "command": "namespaceResolver.importAll",
-                    "group": "0_namespace_resolver@2"
+                    "group": "namespaceresolver"
                 },
                 {
                     "when": "editorLangId == php",
                     "command": "namespaceResolver.expand",
-                    "group": "0_namespace_resolver@3"
+                    "group": "namespaceresolver"
                 },
                 {
                     "when": "editorLangId == php",
                     "command": "namespaceResolver.sort",
-                    "group": "0_namespace_resolver@4"
+                    "group": "namespaceresolver"
                 },
                 {
                     "when": "editorLangId == php",
                     "command": "namespaceResolver.generateNamespace",
-                    "group": "0_namespace_resolver@7"
+                    "group": "namespaceresolver"
                 }
             ],
             "commandPalette": [
@@ -252,14 +264,14 @@
     },
     "devDependencies": {
         "@types/fs-extra": "^11.0.1",
-        "@types/node": "^18.11.18",
+        "@types/node": "^18.14.6",
         "@types/vscode": "^1.68.0",
-        "esbuild": "^0.17.5",
-        "typescript": "^4.9.4"
+        "esbuild": "^0.17.11",
+        "typescript": "^4.9.5"
     },
     "dependencies": {
         "escape-string-regexp": "^5.0.0",
-        "execa": "^6.1.0",
+        "execa": "^7.0.0",
         "find-up": "^6.3.0",
         "fs-extra": "^11.1.0",
         "lodash.groupby": "^4.6.0",
