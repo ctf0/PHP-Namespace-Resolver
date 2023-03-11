@@ -21,7 +21,7 @@ export function buildClassASTFromContent(content: string) {
         const _namespace: any = AST.children!.find((item: any) => item.kind == 'namespace');
         const _use: any = (_namespace || AST).children!.filter((item: any) => item.kind == 'usegroup');
         const _class: any = (_namespace || AST).children!.find((item: any) => ['class', 'enum', 'interface', 'trait'].includes(item.kind));
-        const _trait: any = _class!.body!.find((item: any) => item.kind == 'traituse')?.traits;
+        const _trait: any = _class ? _class.body!.find((item: any) => item.kind == 'traituse')?.traits : {};
 
         return {
             _openTag: {
@@ -43,7 +43,8 @@ export function buildClassASTFromContent(content: string) {
             _trait     : _trait,
         };
     } catch (error) {
-        console.error(error);
+        // console.error(error);
+        throw new Error(error);
     }
 }
 

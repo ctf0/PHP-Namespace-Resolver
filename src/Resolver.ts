@@ -486,7 +486,14 @@ export default class Resolver {
         const editor: any = vscode.window.activeTextEditor;
 
         this.EDITOR = editor;
-        this.CLASS_AST = Parser.buildClassASTFromContent(editor.document.getText());
+
+        try {
+            this.CLASS_AST = Parser.buildClassASTFromContent(editor.document.getText());
+        } catch (error) {
+            this.showMessage(error.message, true);
+
+            throw new Error();
+        }
     }
 
     hasConflict(useStatements, resolving) {
