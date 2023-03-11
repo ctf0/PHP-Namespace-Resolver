@@ -2,7 +2,7 @@
     "name": "php-namespace-resolver",
     "displayName": "PHP Namespace Resolver",
     "description": "Import and expand php namespaces",
-    "version": "0.4.4",
+    "version": "0.4.5",
     "publisher": "ctf0",
     "author": "ctf0",
     "repository": "https://github.com/ctf0/PHP-Namespace-Resolver",
@@ -239,6 +239,28 @@
                     "uniqueItems": true,
                     "markdownDescription": "exclude directories from namespace import search\n\n(.gitignore contents are already excluded)"
                 },
+                "namespaceResolver.removePath": {
+                    "type": "array",
+                    "default": [],
+                    "items": {
+                        "type": "string"
+                    },
+                    "minItems": 0,
+                    "uniqueItems": true,
+                    "markdownDescription": "remove parts from the namespace by regex\n\nex.`remove 'V[0-9]+(\\\\)?' from My\\Project\\V100400\\Folder`"
+                },
+                "namespaceResolver.useFolderTree": {
+                    "type": "boolean",
+                    "default": false,
+                    "markdownDescription": "use folder hierarchy tree if no `composer.json` file is found"
+                },
+                "namespaceResolver.namespacePrefix": {
+                    "type": [
+                        "string"
+                    ],
+                    "default": "",
+                    "markdownDescription": "add a prefix for all generated namespaces\n\nex.`My\\Project\\`"
+                },
                 "namespaceResolver.checkForNamespaces.rg.excludeFiles": {
                     "type": "array",
                     "default": [
@@ -264,7 +286,7 @@
     },
     "devDependencies": {
         "@types/fs-extra": "^11.0.1",
-        "@types/node": "^18.14.6",
+        "@types/node": "^18.15.0",
         "@types/vscode": "^1.68.0",
         "esbuild": "^0.17.11",
         "typescript": "^4.9.5"

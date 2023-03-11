@@ -88,3 +88,8 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 ## 0.4.4
 
 - group menu items to submenu to save space in the context menu
+
+## 0.4.5
+
+- add new configs `namespaceResolver.removePath`, `namespaceResolver.useFolderTree`, `namespaceResolver.namespacePrefix`
+- you we now generate namespaces based on folder hierarchy if project doesn't have a `composer.json` file & `namespaceResolver.useFolderTree` is `true`

@@ -4,8 +4,8 @@ import fs from 'fs-extra';
 import { compare } from 'natural-orderby';
 import path from 'node:path';
 import * as vscode from 'vscode';
-import BUILT_IN_CLASSES_FB from './classes';
 import * as Parser from './Parser';
+import BUILT_IN_CLASSES_FB from './classes';
 
 const COMP_JSON = 'composer.json';
 const regexWordWithNamespace = new RegExp(/[a-zA-Z0-9\\]+/);
@@ -432,12 +432,14 @@ export default class Resolver {
 
             if (alpha) {
                 if (aText.toLowerCase() < bText.toLowerCase()) return -1;
+
                 if (aText.toLowerCase() > bText.toLowerCase()) return 1;
 
                 return 0;
             } else {
                 if ((aText.length + aAlias.length) == (bText.length + bAlias.length)) {
                     if (aText.toLowerCase() < bText.toLowerCase()) return -1;
+
                     if (aText.toLowerCase() > bText.toLowerCase()) return 1;
                 }
 
@@ -610,8 +612,20 @@ export default class Resolver {
                 returnDontInsert,
             );
         } catch (error) {
-            return undefined;
+            if (this.config('useFolderTree')) {
+                ns = this.getFileDirFromPath(currentUri.path.replace(this.CWD, ''))
+                    .replace(/^\//gm, '')
+                    .replace(/\//g, '\\');
+            } else {
+                return undefined;
+            }
         }
+
+        this.config('removePath').forEach((regex) => {
+            ns = ns.replace(new RegExp(regex), '');
+        });
+
+        ns = this.config('namespacePrefix') + ns;
 
         const namespace = '\n' + 'namespace ' + ns + ';' + '\n';
 
