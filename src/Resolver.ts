@@ -498,7 +498,7 @@ export default class Resolver {
 
     hasConflict(useStatements, resolving) {
         for (const useStatement of useStatements) {
-            if (useStatement.text.endsWith(resolving)) {
+            if (useStatement.text.endsWith(`\\${resolving}`)) {
                 return true;
             }
         }

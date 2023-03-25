@@ -93,3 +93,7 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 
 - add new configs `namespaceResolver.removePath`, `namespaceResolver.useFolderTree`, `namespaceResolver.namespacePrefix`
 - you we now generate namespaces based on folder hierarchy if project doesn't have a `composer.json` file & `namespaceResolver.useFolderTree` is `true`
+
+## 0.4.7
+
+- fix incorrect check for already imported classes with similar name
