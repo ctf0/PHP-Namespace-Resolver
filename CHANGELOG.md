@@ -97,3 +97,8 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 ## 0.4.7
 
 - fix incorrect check for already imported classes with similar name
+
+## 0.4.9
+
+- fixes for `importAll`
+- we now also check for type hints & return types for classes to import

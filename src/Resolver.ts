@@ -16,6 +16,7 @@ export default class Resolver {
     CWD: string;
     EDITOR: vscode.TextEditor;
     PKG_NAME = 'namespaceResolver';
+    multiImporting = false;
 
     public constructor() {
         try {
@@ -53,18 +54,29 @@ export default class Resolver {
             fqcn = await this.pickClass(namespaces);
         }
 
-        this.importClass(selection, fqcn, replaceClassAfterImport);
+        return this.importClass(selection, fqcn, replaceClassAfterImport);
     }
 
     async importAll() {
         this.setEditorAndAST();
 
         const { useStatements, declarationLines } = this.getDeclarations();
-        const phpClasses = this.getFileClassesAndTraits(declarationLines);
+        let phpClasses = this.getFileClassesAndTraits(declarationLines);
+
+        this.multiImporting = true;
+
+        phpClasses = phpClasses.filter((phpClass) => !this.hasConflict(useStatements, phpClass) && !this.hasAliasConflict(useStatements, phpClass));
 
         for (const phpClass of phpClasses) {
-            if (!this.hasConflict(useStatements, phpClasses) && !this.hasAliasConflict(useStatements, phpClasses)) {
+            if (phpClass === phpClasses[phpClasses.length - 1]) {
+                this.multiImporting = false;
+            }
+
+            try {
                 await this.importCommand(phpClass);
+            } catch (error) {
+                // console.error(error);
+                continue;
             }
         }
     }
@@ -90,6 +102,8 @@ export default class Resolver {
         phpClasses = phpClasses.concat(this.getInitializedWithNew(text));
         phpClasses = phpClasses.concat(this.getFromStaticCalls(text));
         phpClasses = phpClasses.concat(this.getFromInstanceofOperator(text));
+        phpClasses = phpClasses.concat(this.getFromTypeHints(text));
+        phpClasses = phpClasses.concat(this.getFromReturnType(text));
         phpClasses = phpClasses.concat(declarationLines.trait?.map((item) => item.name));
 
         return phpClasses.filter((item) => item);
@@ -139,18 +153,34 @@ export default class Resolver {
         return phpClasses;
     }
 
-    getImportedPhpClasses(text) {
-        const regex = /use (.*);/gm;
+    getFromTypeHints(text) {
+        const regex = /(?<!\$)([A-Z_][A-Za-z0-9_]*)[[<]/gm;
+
         let matches: any = [];
-        const importedPhpClasses: any = [];
+        const phpClasses: any = [];
 
         while (matches = regex.exec(text)) {
-            const className = matches[1].split('\\').pop();
-
-            importedPhpClasses.push(className);
+            phpClasses.push(matches[1]);
         }
 
-        return importedPhpClasses;
+        return phpClasses;
+    }
+
+    getFromReturnType(text) {
+        const regex = /(?<=\): )([A-Z_][A-Za-z0-9_]*)/gm;
+
+        let matches: any = [];
+        const phpClasses: any = [];
+
+        while (matches = regex.exec(text)) {
+            const txt = matches[1];
+
+            if (txt !== 'self') {
+                phpClasses.push(txt);
+            }
+        }
+
+        return phpClasses;
     }
 
     importClass(selection, fqcn, replaceClassAfterImport = false) {
@@ -159,6 +189,10 @@ export default class Resolver {
             const classBaseName = fqcn.match(/(\w+)/g).pop();
 
             if (this.hasConflict(useStatements, classBaseName)) {
+                if (this.multiImporting) {
+                    return;
+                }
+
                 return this.insertAsAlias(selection, fqcn, useStatements, declarationLines);
             }
 
@@ -196,7 +230,9 @@ export default class Resolver {
             await this.sortImports();
         }
 
-        return this.showMessage('$(check) The class is imported.');
+        if (!this.multiImporting) {
+            return this.showMessage('$(check) The class is imported.');
+        }
     }
 
     async insertAsAlias(selection, fqcn, useStatements, declarationLines) {
@@ -416,6 +452,10 @@ export default class Resolver {
     }
 
     async sortImports() {
+        if (this.multiImporting) {
+            return;
+        }
+
         const { useStatements } = this.getDeclarations();
         const alpha = this.config('sort.alphabetically');
 
@@ -496,7 +536,7 @@ export default class Resolver {
         }
     }
 
-    hasConflict(useStatements, resolving) {
+    hasConflict(useStatements: any, resolving: string) {
         for (const useStatement of useStatements) {
             if (useStatement.text.endsWith(`\\${resolving}`)) {
                 return true;
@@ -506,7 +546,7 @@ export default class Resolver {
         return false;
     }
 
-    hasAliasConflict(useStatements, resolving) {
+    hasAliasConflict(useStatements: any, resolving: string) {
         for (const useStatement of useStatements) {
             if (useStatement.alias === resolving) {
                 return true;
@@ -547,7 +587,7 @@ export default class Resolver {
     getInsertLine(declarationLines) {
         const _use = declarationLines.useStatement;
 
-        if (_use) {
+        if (_use.length) {
             return _use[0].loc.start.line - 1;
         }
 
