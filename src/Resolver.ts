@@ -9,6 +9,7 @@ import BUILT_IN_CLASSES_FB from './classes';
 
 const COMP_JSON = 'composer.json';
 const regexWordWithNamespace = new RegExp(/[a-zA-Z0-9\\]+/);
+const DATA_TYPES = ['object', 'resource', 'array', 'string', 'int', 'float', 'bool', 'null', 'void', 'mixed'];
 
 export default class Resolver {
     BUILT_IN_CLASSES: any = BUILT_IN_CLASSES_FB;
@@ -160,14 +161,18 @@ export default class Resolver {
         const phpClasses: any = [];
 
         while (matches = regex.exec(text)) {
-            phpClasses.push(matches[1]);
+            const txt = matches[1];
+
+            if (!this.BUILT_IN_CLASSES.includes(txt)) {
+                phpClasses.push(txt);
+            }
         }
 
         return phpClasses;
     }
 
     getFromReturnType(text) {
-        const regex = /(?<=\): )([A-Z_][A-Za-z0-9_]*)/gm;
+        const regex = /(?<=\):( )?)([A-Z_][A-Za-z0-9_]*)/gm;
 
         let matches: any = [];
         const phpClasses: any = [];
@@ -175,7 +180,7 @@ export default class Resolver {
         while (matches = regex.exec(text)) {
             const txt = matches[1];
 
-            if (txt !== 'self') {
+            if (!this.BUILT_IN_CLASSES.includes(txt)) {
                 phpClasses.push(txt);
             }
         }
