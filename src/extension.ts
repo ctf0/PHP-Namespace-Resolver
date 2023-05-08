@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
 import checkForNamespaces from './NamespaceCheck';
-import Resolver from './Resolver';
+import { PKG_LABEL, Resolver } from './Resolver';
 
 export async function activate(context) {
     const resolver = new Resolver();
-    const createDiagnosticCollection = vscode.languages.createDiagnosticCollection('PHP Namespace Resolver');
+    const createDiagnosticCollection = vscode.languages.createDiagnosticCollection(PKG_LABEL);
 
     context.subscriptions.push(
         createDiagnosticCollection,

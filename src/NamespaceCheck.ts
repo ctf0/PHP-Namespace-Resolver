@@ -11,7 +11,7 @@
 import { execa } from 'execa';
 import groupBy from 'lodash.groupby';
 import * as vscode from 'vscode';
-import Resolver from './Resolver';
+import { PKG_LABEL, Resolver } from './Resolver';
 
 export default async function checkForNamespaces(resolver: Resolver, createDiagnosticCollection: vscode.DiagnosticCollection) {
     if (resolver.CWD) {
@@ -191,7 +191,7 @@ function createDiagnostic(item) {
         vscode.DiagnosticSeverity.Warning,
     );
 
-    diagnostic.source = 'PHP Namespace Resolver';
+    diagnostic.source = PKG_LABEL;
 
     return diagnostic;
 }

@@ -102,3 +102,7 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 
 - fixes for `importAll`
 - we now also check for type hints & return types for classes to import
+
+## 0.5.1
+
+- show output panel when phpcommand fails

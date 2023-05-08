@@ -7,11 +7,13 @@ import * as vscode from 'vscode';
 import * as Parser from './Parser';
 import BUILT_IN_CLASSES_FB from './classes';
 
+export const PKG_LABEL = 'PHP Namespace Resolver';
 const COMP_JSON = 'composer.json';
-const regexWordWithNamespace = new RegExp(/[a-zA-Z0-9\\]+/);
 const DATA_TYPES = ['object', 'resource', 'array', 'string', 'int', 'float', 'bool', 'null', 'void', 'mixed'];
+const regexWordWithNamespace = new RegExp(/[a-zA-Z0-9\\]+/);
+const outputChannel = vscode.window.createOutputChannel(PKG_LABEL, 'log');
 
-export default class Resolver {
+export class Resolver {
     BUILT_IN_CLASSES: any = BUILT_IN_CLASSES_FB;
     CLASS_AST: any;
     CWD: string;
@@ -465,7 +467,7 @@ export default class Resolver {
         const alpha = this.config('sort.alphabetically');
 
         if (useStatements.length <= 1) {
-            throw new Error('PHP Namespace Resolver: Nothing to sort.');
+            throw new Error(`${PKG_LABEL}: Nothing to sort.`);
         }
 
         let sortFunction = (a, b) => {
@@ -633,8 +635,8 @@ export default class Resolver {
         message = message.replace(/\$\(.+?\)/, '').trim();
 
         return error
-            ? vscode.window.showErrorMessage(`PHP Namespace Resolver: ${message}`)
-            : vscode.window.showInformationMessage(`PHP Namespace Resolver: ${message}`);
+            ? vscode.window.showErrorMessage(`${PKG_LABEL}: ${message}`)
+            : vscode.window.showInformationMessage(`${PKG_LABEL}: ${message}`);
     }
 
     /**
@@ -843,7 +845,7 @@ export default class Resolver {
         const phpCommand = this.config('php.command');
 
         if (!phpCommand) {
-            throw new Error('config required : phpCommand');
+            throw new Error('config required : "namespaceResolver.php.command"');
         }
 
         try {
@@ -855,6 +857,10 @@ export default class Resolver {
             return JSON.parse(stdout);
         } catch (error) {
             // console.error(error);
+
+            outputChannel.clear();
+            outputChannel.appendLine(error.message);
+            outputChannel.show();
         }
     }
 
