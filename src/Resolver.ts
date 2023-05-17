@@ -858,9 +858,8 @@ export class Resolver {
         } catch (error) {
             // console.error(error);
 
-            outputChannel.clear();
-            outputChannel.appendLine(error.message);
-            outputChannel.show();
+            outputChannel.replace(error.message);
+            // outputChannel.show();
         }
     }
 
