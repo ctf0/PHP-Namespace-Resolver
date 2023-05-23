@@ -3,9 +3,10 @@ import * as vscode from 'vscode';
 
 const Parser = new PhpParser.Engine({
     parser: {
-        locations     : true,
-        extractDoc    : true,
-        extractTokens : true,
+        locations      : true,
+        extractDoc     : true,
+        extractTokens  : true,
+        suppressErrors : true,
     },
     ast: {
         withPositions: true,

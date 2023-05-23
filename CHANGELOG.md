@@ -106,3 +106,7 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 ## 0.5.1
 
 - show output panel when phpcommand fails
+
+## 0.5.3
+
+- allow the extension to work regardless of parsing errors
