@@ -181,4 +181,4 @@ export default [
     'XMLWriter',
     'XSLTProcessor',
     'ZipArchive',
-];
+]

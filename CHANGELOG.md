@@ -110,3 +110,9 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 ## 0.5.3
 
 - allow the extension to work regardless of parsing errors
+
+## 0.5.5
+
+- config `exclude` is now array instead of string for better readability
+- classes are now expanded by default on import
+- fix double importing of namespaces

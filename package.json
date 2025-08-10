@@ -2,12 +2,12 @@
     "name": "php-namespace-resolver",
     "displayName": "PHP Namespace Resolver",
     "description": "Import and expand php namespaces",
-    "version": "0.5.3",
+    "version": "0.5.5",
     "publisher": "ctf0",
     "author": "ctf0",
     "repository": "https://github.com/ctf0/PHP-Namespace-Resolver",
     "engines": {
-        "vscode": "^1.68.0"
+        "vscode": "^1.90.0"
     },
     "categories": [
         "Other"
@@ -155,8 +155,15 @@
             "title": "PHP Namespace Resolver",
             "properties": {
                 "namespaceResolver.exclude": {
-                    "type": "string",
-                    "default": "**/node_modules/**",
+                    "type": "array",
+                    "default": [
+                        "**/node_modules/**"
+                    ],
+                    "items": {
+                        "type": "string"
+                    },
+                    "minItems": 1,
+                    "uniqueItems": true,
                     "description": "Exclude glob pattern while finding files"
                 },
                 "namespaceResolver.showMessageOnStatusBar": {
@@ -285,18 +292,18 @@
         "watch": "npm run esbuild"
     },
     "devDependencies": {
-        "@types/fs-extra": "^11.0.1",
-        "@types/node": "^18.15.11",
-        "@types/vscode": "^1.68.0",
-        "esbuild": "^0.17.15",
-        "typescript": "^5.0.4"
+        "@types/fs-extra": "^11.0.4",
+        "@types/node": "^24.2.1",
+        "@types/vscode": "^1.90.0",
+        "esbuild": "^0.25.8",
+        "typescript": "^5.9.2"
     },
     "dependencies": {
-        "execa": "^7.1.1",
-        "find-up": "^6.3.0",
-        "fs-extra": "^11.1.1",
+        "execa": "^9.6.0",
+        "find-up": "^7.0.0",
+        "fs-extra": "^11.3.1",
         "lodash.groupby": "^4.6.0",
-        "natural-orderby": "^3.0.2",
-        "php-parser": "^3.1.4"
+        "natural-orderby": "^5.0.0",
+        "php-parser": "^3.2.5"
     }
 }
