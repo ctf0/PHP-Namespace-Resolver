@@ -2,7 +2,7 @@
     "name": "php-namespace-resolver",
     "displayName": "PHP Namespace Resolver",
     "description": "Import and expand php namespaces",
-    "version": "0.5.5",
+    "version": "0.6.0",
     "publisher": "ctf0",
     "author": "ctf0",
     "repository": "https://github.com/ctf0/PHP-Namespace-Resolver",
@@ -55,6 +55,11 @@
             {
                 "command": "namespaceResolver.checkForNamespaces",
                 "title": "Check for namespaces project wide",
+                "category": "PHP Namespace Resolver"
+            },
+            {
+                "command": "namespaceResolver.update_file_type_by_name",
+                "title": "Update File Type Name By File Name",
                 "category": "PHP Namespace Resolver"
             }
         ],
@@ -299,6 +304,7 @@
         "typescript": "^5.9.2"
     },
     "dependencies": {
+        "escape-string-regexp": "^5.0.0",
         "execa": "^9.6.0",
         "find-up": "^7.0.0",
         "fs-extra": "^11.3.1",

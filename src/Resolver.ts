@@ -1,3 +1,4 @@
+import escapeStringRegexp from 'escape-string-regexp'
 import {execaCommand} from 'execa'
 import {findUp} from 'find-up'
 import fs from 'fs-extra'
@@ -9,7 +10,7 @@ import BUILT_IN_CLASSES_FB from './classes'
 
 export const PKG_LABEL = 'PHP Namespace Resolver'
 const COMP_JSON = 'composer.json'
-const regexWordWithNamespace = new RegExp(/[a-zA-Z0-9\\]+/)
+const regexWordWithNamespace = new RegExp(/[A-Z0-9][a-zA-Z0-9_\\]+/)
 const outputChannel = vscode.window.createOutputChannel(PKG_LABEL, 'log')
 
 export class Resolver {
@@ -70,18 +71,47 @@ export class Resolver {
     async importAll() {
         this.setEditorAndAST()
 
-        const {useStatements, declarationLines} = this.getDeclarations()
-        let phpClasses = this.getFileClassesAndTraits(declarationLines)
+        const {declarationLines} = this.getDeclarations()
+        let phpClasses = [...new Set(this.getFileClassesAndTraits(declarationLines))]
+        const fqClasses = []
 
         this.multiImporting = true
-
-        phpClasses = phpClasses.filter((phpClass) => !this.hasConflict(useStatements, phpClass) && !this.hasAliasConflict(useStatements, phpClass))
-
-        for (const phpClass of phpClasses) {
-            if (phpClass === phpClasses[phpClasses.length - 1]) {
-                this.multiImporting = false
+        // simple classes
+        phpClasses = phpClasses.filter((item: string) => {
+            if (item.includes('\\')) {
+                fqClasses.push(item)
+                return false
             }
 
+            return true
+        })
+
+        // fqns classes
+        for (const fqClass of fqClasses) {
+            try {
+                const selections = this.findRegexPositions(new RegExp(`(?<!use( +)?)${escapeStringRegexp(fqClass)}`, 'g'))
+
+                if (selections) {
+                    for (let i = 0; i < selections.length; i++) {
+                        const selection = selections[i]
+
+                        // to avoid adding duplicate imports
+                        if (i == 1) {
+                            this.setEditorAndAST()
+                        }
+
+                        await this.importCommand(selection)
+                    }
+                }
+            } catch (error) {
+                // console.error(error);
+                continue
+            }
+        }
+
+        this.setEditorAndAST()
+
+        for (const phpClass of phpClasses) {
             try {
                 await this.importCommand(phpClass)
             } catch (error) {
@@ -89,6 +119,8 @@ export class Resolver {
                 continue
             }
         }
+
+        return this.showMessage('$(check) importing done.')
     }
 
     getFileClassesAndTraits(declarationLines) {
@@ -128,7 +160,7 @@ export class Resolver {
     }
 
     getInitializedWithNew(text) {
-        const regex = /new ([A-Z][A-Za-z0-9\-_]*)/gm
+        const regex = /new ([A-Z0-9][a-zA-Z0-9_\\]+)/gm
         let matches: any = []
         const phpClasses: any = []
 
@@ -140,7 +172,7 @@ export class Resolver {
     }
 
     getFromStaticCalls(text) {
-        const regex = /([A-Z][A-Za-z0-9\-_]*)::/gm
+        const regex = /([A-Z0-9][a-zA-Z0-9_\\]+)::/gm
         let matches: any = []
         const phpClasses: any = []
 
@@ -152,7 +184,7 @@ export class Resolver {
     }
 
     getFromInstanceofOperator(text) {
-        const regex = /instanceof ([A-Z_][A-Za-z0-9_]*)/gm
+        const regex = /instanceof ([A-Z0-9][a-zA-Z0-9_\\]+)/gm
         let matches: any = []
         const phpClasses: any = []
 
@@ -164,7 +196,7 @@ export class Resolver {
     }
 
     getFromTypeHints(text) {
-        const regex = /(?<!\$)([A-Z_][A-Za-z0-9_]*)[[<]/gm
+        const regex = /(?<!\$)([A-Z0-9][a-zA-Z0-9_\\]+)[[<]/gm
 
         let matches: any = []
         const phpClasses: any = []
@@ -181,7 +213,7 @@ export class Resolver {
     }
 
     getFromReturnType(text) {
-        const regex = /(?<=\):( )?)([A-Z_][A-Za-z0-9_]*)/gm
+        const regex = /(?<=\):( )?)([A-Z0-9][a-zA-Z0-9_\\]+)/gm
 
         let matches: any = []
         const phpClasses: any = []
@@ -204,6 +236,10 @@ export class Resolver {
 
             if (this.hasConflict(useStatements, classBaseName)) {
                 if (this.multiImporting) {
+                    if (replaceClassAfterImport) {
+                        return this.changeSelectedClass(selection, classBaseName)
+                    }
+
                     return
                 }
 
@@ -274,7 +310,10 @@ export class Resolver {
     async insertNewUseStatement(selection, fqcn, useStatements, declarationLines) {
         if (useStatements.find((use) => use.text == fqcn)) {
             const classBaseName = fqcn.match(/(\w+)/g).pop()
-            this.changeSelectedClass(selection, classBaseName, false)
+
+            if (classBaseName != fqcn) {
+                this.changeSelectedClass(selection, classBaseName)
+            }
 
             return this.showMessage(`'${fqcn}' already exists`, true)
         }
@@ -314,7 +353,7 @@ export class Resolver {
     }
 
     async importAndReplaceOldUseStatement(selection: any, replacingClassName: string, fqcn: any, declarationLines: any, alias = null) {
-        await this.changeSelectedClass(selection, replacingClassName, false)
+        await this.changeSelectedClass(selection, replacingClassName)
 
         return this.insert(fqcn, declarationLines, alias)
     }
@@ -340,10 +379,11 @@ export class Resolver {
 
     async changeSelectedClass(selection, fqcn, prependBackslash = false) {
         const editor: any = this.EDITOR
+        selection = selection.position || selection.active
 
         await editor.edit((textEdit) => {
             textEdit.replace(
-                editor.document.getWordRangeAtPosition(selection.active, regexWordWithNamespace),
+                editor.document.getWordRangeAtPosition(selection, regexWordWithNamespace),
                 (prependBackslash && this.config('leadingSeparator') ? '\\' : '') + fqcn,
             )
 
@@ -360,7 +400,7 @@ export class Resolver {
             }
         }, {undoStopBefore: false, undoStopAfter: false})
 
-        const newPosition = new vscode.Position(selection.active.line, selection.active.character)
+        const newPosition = new vscode.Position(selection.line, selection.character)
 
         editor.selection = new vscode.Selection(newPosition, newPosition)
     }
@@ -638,7 +678,7 @@ export class Resolver {
 
         const document: any = this.EDITOR?.document
 
-        const wordRange = document.getWordRangeAtPosition(selection.active, regexWordWithNamespace)
+        const wordRange = document.getWordRangeAtPosition(selection.position || selection.active, selection.match || regexWordWithNamespace)
 
         if (wordRange === undefined) {
             return undefined
@@ -685,7 +725,7 @@ export class Resolver {
                 },
                 returnDontInsert,
             )
-        } catch {
+        } catch (error) {
             if (this.config('useFolderTree')) {
                 ns = this.getFileDirFromPath(currentUri.path.replace(this.CWD, ''))
                     .replace(/^\//gm, '')
@@ -853,6 +893,33 @@ export class Resolver {
         }
     }
 
+    async updateFileTypeByName() {
+        this.setEditorAndAST()
+
+        const editor = this.EDITOR
+        const document = editor?.document
+        const fileName = this.getFileNameFromPath(document.uri.path)
+        const {declarationLines} = this.getDeclarations()
+        let __class = declarationLines.class
+
+        if (__class) {
+            __class = __class.name
+
+            if (__class.name !== fileName) {
+                return editor.edit((textEdit) => {
+                    textEdit.replace(
+                        Parser.getRangeFromLoc(__class.loc.start, __class.loc.end),
+                        fileName,
+                    )
+                }, {undoStopBefore: false, undoStopAfter: false})
+            }
+
+            return this.showMessage(`Type "${__class.name}" is already the same as "${fileName}"`, true)
+        }
+
+        return this.showMessage('Nothing to update, or file is not supported')
+    }
+
     getPHPClassList(): Promise<any> {
         return Promise
             .all(
@@ -887,5 +954,31 @@ export class Resolver {
 
     config(key): any {
         return vscode.workspace.getConfiguration(this.PKG_NAME).get(key)
+    }
+
+    findRegexPositions(pattern: RegExp) {
+        const document = this.EDITOR.document
+        const text = document.getText()
+        const results: any = []
+        let i = 0
+
+        let match: RegExpExecArray | null
+
+        while ((match = pattern.exec(text)) !== null) {
+            let position = document.positionAt(match.index)
+
+            // because after the class import, lines shift by 1
+            if (i > 0) {
+                position = position.translate(1)
+            }
+
+            results.push({
+                position: position,
+                match: pattern,
+            })
+            i++
+        }
+
+        return results
     }
 }

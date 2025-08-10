@@ -116,3 +116,12 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 - config `exclude` is now array instead of string for better readability
 - classes are now expanded by default on import
 - fix double importing of namespaces
+
+## 0.6.0
+
+- fix adding duplicate imports in `importAll`
+- `importAll` now also include static calls with fqn class
+- fix removing the imported class and showing that it exists afterwards
+- add new cmnd `Update File Type Name By File Name` instead of manually changing the name
+- show correct msg for the `importAll`
+- remove `-` lockup from the class name search
