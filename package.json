@@ -2,7 +2,7 @@
     "name": "php-namespace-resolver",
     "displayName": "PHP Namespace Resolver",
     "description": "Import and expand php namespaces",
-    "version": "0.6.0",
+    "version": "0.6.1",
     "publisher": "ctf0",
     "author": "ctf0",
     "repository": "https://github.com/ctf0/PHP-Namespace-Resolver",

@@ -14,16 +14,17 @@ const regexWordWithNamespace = new RegExp(/[A-Z0-9][a-zA-Z0-9_\\]+/)
 const outputChannel = vscode.window.createOutputChannel(PKG_LABEL, 'log')
 
 export class Resolver {
-    BUILT_IN_CLASSES: any = BUILT_IN_CLASSES_FB
+    BUILT_IN_CLASSES: string[] = BUILT_IN_CLASSES_FB
     CLASS_AST: any
     CWD: string
-    EDITOR: vscode.TextEditor
-    PKG_NAME = 'namespaceResolver'
+    EDITOR: vscode.TextEditor | undefined
+    PKG_NAME = 'namespaceResolver' as const
     multiImporting = false
 
     public constructor() {
         try {
-            this.CWD = vscode.workspace.workspaceFolders![0].uri.fsPath
+            const workspaceFolders = vscode.workspace.workspaceFolders
+            this.CWD = workspaceFolders?.[0]?.uri.fsPath ?? ''
         } catch {
             this.CWD = ''
         }
@@ -31,49 +32,63 @@ export class Resolver {
         this.getPHPClassList()
     }
 
-    async importCommand(selection) {
+    async importCommand(selection: vscode.Selection | string): Promise<string | vscode.Disposable | undefined> {
         const className = this.resolving(selection)
 
         if (className === undefined) {
             return this.showMessage('No class is selected.', true)
         }
 
-        let fqcn
-        let replaceClassAfterImport = false
+        try {
+            let fqcn
+            let replaceClassAfterImport = false
 
-        // ex. \Test\Test::class
-        if (/^\\/.test(className)) {
-            // Test\Test
-            fqcn = className.replace(/^\\/, '')
-            replaceClassAfterImport = true
+            // ex. \Test\Test::class
+            if (/^\\/.test(className)) {
+                // Test\Test
+                fqcn = className.replace(/^\\/, '')
+                replaceClassAfterImport = true
+            }
+            // ex. Test\Test::class
+            else if (/\w+\\/.test(className)) {
+                // Test
+                fqcn = className.replace(/\w+\\/g, '')
+                replaceClassAfterImport = true
+
+                const files = await this.findFiles(fqcn)
+                const namespaces = await this.findNamespaces(fqcn, files)
+                fqcn = await this.pickClass(namespaces.filter((item) => item.endsWith(className)))
+            }
+            // ex. Test::class
+            else {
+                const files = await this.findFiles(className)
+                const namespaces = await this.findNamespaces(className, files)
+
+                fqcn = await this.pickClass(namespaces)
+            }
+
+            return this.importClass(selection, fqcn, replaceClassAfterImport)
+        } catch (error) {
+            if (this.multiImporting) {
+                this.showMessage(`import ignored for "${className}"`, true)
+
+                return undefined
+            }
+
+            return this.showMessage('No class found to import.', true)
         }
-        // ex. Test\Test::class
-        else if (/\w+\\/.test(className)) {
-            // Test
-            fqcn = className.replace(/\w+\\/g, '')
-            replaceClassAfterImport = true
-
-            const files = await this.findFiles(fqcn)
-            const namespaces = await this.findNamespaces(fqcn, files)
-            fqcn = await this.pickClass(namespaces.filter((item) => item.endsWith(className)))
-        }
-        // ex. Test::class
-        else {
-            const files = await this.findFiles(className)
-            const namespaces = await this.findNamespaces(className, files)
-
-            fqcn = await this.pickClass(namespaces)
-        }
-
-        return this.importClass(selection, fqcn, replaceClassAfterImport)
     }
 
-    async importAll() {
+    async importAll(): Promise<string | vscode.Disposable | undefined> {
         this.setEditorAndAST()
 
-        const {declarationLines} = this.getDeclarations()
-        let phpClasses = [...new Set(this.getFileClassesAndTraits(declarationLines))]
-        const fqClasses = []
+        const {useStatements, declarationLines} = this.getDeclarations()
+
+        let phpClasses = [...new Set(
+            this.getFileClassesAndTraits(declarationLines).filter((phpClass) => !this.hasAliasConflict(useStatements, phpClass)),
+        )]
+
+        const fqClasses: string[] = []
 
         this.multiImporting = true
         // simple classes
@@ -123,10 +138,15 @@ export class Resolver {
         return this.showMessage('$(check) importing done.')
     }
 
-    getFileClassesAndTraits(declarationLines) {
+    getFileClassesAndTraits(declarationLines: any): string[] {
         const text = this.EDITOR?.document.getText()
+
+        if (!text) {
+            return []
+        }
+
         const _class = declarationLines.class
-        let phpClasses = []
+        let phpClasses: string[] = []
 
         if (_class?.extends !== null) {
             phpClasses = phpClasses.concat(_class.extends.name)
@@ -147,64 +167,71 @@ export class Resolver {
         phpClasses = phpClasses.concat(this.getFromTypeHints(text))
         phpClasses = phpClasses.concat(this.getFromReturnType(text))
         phpClasses = phpClasses.concat(declarationLines.trait?.map((item) => item.name))
+        phpClasses = phpClasses.concat(declarationLines.trait?.map((item: any) => item.name) ?? [])
 
         return phpClasses.filter((item) => item)
     }
 
-    getFromFunctionParameters(_class) {
-        const methods = _class.body?.filter((item) => item.kind === 'method' && item.arguments.length)
+    getFromFunctionParameters(_class: any): string[][] {
+        const methods = _class.body?.filter((item: any) => item.kind === 'method' && item.arguments.length)
 
-        return methods?.map((item) => item.arguments
-            .filter((arg) => arg.type.kind == 'name' && arg.type.resolution == 'uqn')
-            .map((arg) => arg.type.name))
+        return methods?.map((item: any) => item.arguments
+            .filter((arg: any) => arg.type.kind == 'name' && arg.type.resolution == 'uqn')
+            .map((arg: any) => arg.type.name)) ?? []
     }
 
-    getInitializedWithNew(text) {
+    getInitializedWithNew(text: string): string[] {
         const regex = /new ([A-Z0-9][a-zA-Z0-9_\\]+)/gm
-        let matches: any = []
-        const phpClasses: any = []
+        let matches: RegExpExecArray | null = null
+        const phpClasses: string[] = []
 
         while ((matches = regex.exec(text))) {
-            phpClasses.push(matches[1])
+            if (matches[1]) {
+                phpClasses.push(matches[1])
+            }
         }
 
         return phpClasses
     }
 
-    getFromStaticCalls(text) {
+    getFromStaticCalls(text: string): string[] {
         const regex = /([A-Z0-9][a-zA-Z0-9_\\]+)::/gm
-        let matches: any = []
-        const phpClasses: any = []
+        let matches: RegExpExecArray | null = null
+        const phpClasses: string[] = []
 
         while ((matches = regex.exec(text))) {
-            phpClasses.push(matches[1])
+            if (matches[1]) {
+                phpClasses.push(matches[1])
+            }
         }
 
         return phpClasses
     }
 
-    getFromInstanceofOperator(text) {
+    getFromInstanceofOperator(text: string): string[] {
         const regex = /instanceof ([A-Z0-9][a-zA-Z0-9_\\]+)/gm
-        let matches: any = []
-        const phpClasses: any = []
+        let matches: RegExpExecArray | null = null
+        const phpClasses: string[] = []
 
         while ((matches = regex.exec(text))) {
-            phpClasses.push(matches[1])
+            if (matches[1]) {
+                phpClasses.push(matches[1])
+            }
         }
 
         return phpClasses
     }
 
-    getFromTypeHints(text) {
+    getFromTypeHints(text: string): string[] {
         const regex = /(?<!\$)([A-Z0-9][a-zA-Z0-9_\\]+)[[<]/gm
 
-        let matches: any = []
-        const phpClasses: any = []
+        let matches: RegExpExecArray | null = null
+        const phpClasses: string[] = []
 
         while ((matches = regex.exec(text))) {
             const txt = matches[1]
 
-            if (!this.BUILT_IN_CLASSES.includes(txt)) {
+            if (txt && !this.BUILT_IN_CLASSES.includes(txt)) {
                 phpClasses.push(txt)
             }
         }
@@ -212,16 +239,16 @@ export class Resolver {
         return phpClasses
     }
 
-    getFromReturnType(text) {
+    getFromReturnType(text: string): string[] {
         const regex = /(?<=\):( )?)([A-Z0-9][a-zA-Z0-9_\\]+)/gm
 
-        let matches: any = []
-        const phpClasses: any = []
+        let matches: RegExpExecArray | null = null
+        const phpClasses: string[] = []
 
         while ((matches = regex.exec(text))) {
             const txt = matches[1]
 
-            if (!this.BUILT_IN_CLASSES.includes(txt)) {
+            if (txt && !this.BUILT_IN_CLASSES.includes(txt)) {
                 phpClasses.push(txt)
             }
         }
@@ -343,7 +370,6 @@ export class Resolver {
 
         await editor.edit((textEdit) => {
             textEdit.replace(
-                // @ts-expect-error (position != range)
                 editor.document.getWordRangeAtPosition(selection.active, regexWordWithNamespace),
                 classBaseName,
             )
@@ -438,7 +464,7 @@ export class Resolver {
     }
 
     pickClass(namespaces) {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             if (namespaces.length === 1) {
                 // Only one namespace found so no need to show picker.
                 return resolve(namespaces[0])
@@ -446,8 +472,10 @@ export class Resolver {
 
             vscode.window.showQuickPick(namespaces).then((picked) => {
                 if (picked !== undefined) {
-                    resolve(picked)
+                    return resolve(picked)
                 }
+
+                return reject()
             })
         })
     }
@@ -455,6 +483,7 @@ export class Resolver {
     getFileNameFromPath(file) {
         return path.parse(file).name
     }
+
     getFileDirFromPath(file) {
         return path.parse(file).dir
     }
@@ -627,21 +656,21 @@ export class Resolver {
     getDeclarations() {
         const useStatements: any = []
         const declarationLines = {
-            PHPTag       : this.CLASS_AST._openTag,
-            declare      : this.CLASS_AST._declare,
-            namespace    : this.CLASS_AST._namespace,
-            useStatement : this.CLASS_AST._use,
-            class        : this.CLASS_AST._class,
-            trait        : this.CLASS_AST._trait,
+            PHPTag: this.CLASS_AST._openTag,
+            declare: this.CLASS_AST._declare,
+            namespace: this.CLASS_AST._namespace,
+            useStatement: this.CLASS_AST._use,
+            class: this.CLASS_AST._class,
+            trait: this.CLASS_AST._trait,
         }
 
         for (const useStatement of declarationLines.useStatement) {
             const item = useStatement.items[0]
 
             useStatements.push({
-                text  : item.name,
-                alias : item.alias?.name,
-                line  : useStatement.loc.start.line - 1,
+                text: item.name,
+                alias: item.alias?.name,
+                line: useStatement.loc.start.line - 1,
             })
         }
 
@@ -671,7 +700,7 @@ export class Resolver {
         }
     }
 
-    resolving(selection) {
+    resolving(selection: vscode.Selection | string | any): string | undefined {
         if (typeof selection === 'string') {
             return selection
         }
@@ -720,12 +749,12 @@ export class Resolver {
             ns = await this.createNamespace(
                 currentUri,
                 {
-                    psrData          : psr4,
-                    composerFilePath : composerFile,
+                    psrData: psr4,
+                    composerFilePath: composerFile,
                 },
                 returnDontInsert,
             )
-        } catch (error) {
+        } catch {
             if (this.config('useFolderTree')) {
                 ns = this.getFileDirFromPath(currentUri.path.replace(this.CWD, ''))
                     .replace(/^\//gm, '')
@@ -812,12 +841,14 @@ export class Resolver {
             if (devPsr4 !== undefined) {
                 psr4 = {...psr4, ...devPsr4}
             }
-        } catch {}
+        } catch (error) {
+            console.error(error)
+        }
 
         return psr4
     }
 
-    async createNamespace(currentUri: vscode.Uri, composer: { psrData?: any; composerFilePath: string; }, ignoreError = true): Promise<any> {
+    async createNamespace(currentUri: vscode.Uri, composer: {psrData?: any, composerFilePath: string}, ignoreError = true): Promise<any> {
         const currentFilePath = currentUri?.path
         const composerFileDir = this.getFileDirFromPath(composer.composerFilePath)
         const currentFileDir = this.getFileDirFromPath(currentFilePath)
@@ -939,8 +970,8 @@ export class Resolver {
 
         try {
             const {stdout} = await execaCommand(`${phpCommand} -r 'echo json_encode(${method});'`, {
-                cwd   : this.CWD,
-                shell : vscode.env.shell,
+                cwd: this.CWD,
+                shell: vscode.env.shell,
             })
 
             return JSON.parse(stdout)

@@ -13,12 +13,12 @@ import groupBy from 'lodash.groupby'
 import * as vscode from 'vscode'
 import {PKG_LABEL, Resolver} from './Resolver'
 
-export default async function checkForNamespaces(resolver: Resolver, createDiagnosticCollection: vscode.DiagnosticCollection) {
+export default async function checkForNamespaces(resolver: Resolver, createDiagnosticCollection: vscode.DiagnosticCollection): Promise<void> {
     if (resolver.CWD) {
         vscode.window.withProgress({
-            location    : vscode.ProgressLocation.Notification,
-            cancellable : false,
-            title       : 'Please Wait',
+            location: vscode.ProgressLocation.Notification,
+            cancellable: false,
+            title: 'Please Wait',
         }, async() => {
             try {
                 const autoloadFilesData = [...await getAutoloadFileData(resolver)]
@@ -108,8 +108,8 @@ async function searchAllFilesForImports(resolver: Resolver): Promise<any> {
     ]
 
     const {stdout} = await execa(rgCommand, args, {
-        cwd   : resolver.CWD,
-        shell : vscode.env.shell,
+        cwd: resolver.CWD,
+        shell: vscode.env.shell,
     })
 
     const uses: any = []
@@ -125,9 +125,9 @@ async function searchAllFilesForImports(resolver: Resolver): Promise<any> {
             /* -------------------------------------------------------------------------- */
             if (_import.startsWith('use ') && !uses.includes(_import)) {
                 uses.push({
-                    file   : _file,
-                    import : _import,
-                    found  : 0,
+                    file: _file,
+                    import: _import,
+                    found: 0,
                 })
             }
 
@@ -153,9 +153,9 @@ async function searchAllFilesForImports(resolver: Resolver): Promise<any> {
             /* -------------------------------------------------------------------------- */
 
             return {
-                file   : _file,
-                line   : parseInt(matches[1]),
-                import : _import.replace('use ', ''),
+                file: _file,
+                line: parseInt(matches[1]),
+                import: _import.replace('use ', ''),
             }
         })
         .map((obj: any) => {

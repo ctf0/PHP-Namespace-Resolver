@@ -3,17 +3,17 @@ import * as vscode from 'vscode'
 
 const Parser = new PhpParser.Engine({
     parser: {
-        locations      : true,
-        extractDoc     : true,
-        extractTokens  : true,
-        suppressErrors : true,
+        locations: true,
+        extractDoc: true,
+        extractTokens: true,
+        suppressErrors: true,
     },
     ast: {
         withPositions: true,
     },
 })
 
-export function buildClassASTFromContent(content: string) {
+export function buildClassASTFromContent(content: string): any {
     try {
         const AST = Parser.parseCode(content, '*.php')
 
@@ -28,20 +28,20 @@ export function buildClassASTFromContent(content: string) {
             _openTag: {
                 loc: {
                     start: {
-                        line   : _tag[2],
-                        column : _tag[3],
+                        line: _tag[2],
+                        column: _tag[3],
                     },
                     end: {
-                        line   : _tag[2],
-                        column : _tag[4],
+                        line: _tag[2],
+                        column: _tag[4],
                     },
                 },
             },
-            _declare   : _declare,
-            _namespace : _namespace ? getNamespaceLoc(_namespace, _use![0] || _class) : null,
-            _class     : _class,
-            _use       : _use,
-            _trait     : _trait,
+            _declare: _declare,
+            _namespace: _namespace ? getNamespaceLoc(_namespace, _use![0] || _class) : null,
+            _class: _class,
+            _use: _use,
+            _trait: _trait,
         }
     } catch (error) {
         // console.error(error);
@@ -60,13 +60,13 @@ function getNamespaceLoc(start, end) {
 
     return {
         loc: {
-            start : start.loc.start,
-            end   : {line: line, column: 0},
+            start: start.loc.start,
+            end: {line: line, column: 0},
         },
     }
 }
 
-export function getRangeFromLoc(start: { line: number; column: number; }, end: { line: number; column: number; }): vscode.Range {
+export function getRangeFromLoc(start: {line: number, column: number}, end: {line: number, column: number}): vscode.Range {
     return new vscode.Range(
         new vscode.Position(start.line - 1, start.column),
         new vscode.Position(end.line - 1, end.column),

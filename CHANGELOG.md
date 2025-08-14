@@ -125,3 +125,8 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 - add new cmnd `Update File Type Name By File Name` instead of manually changing the name
 - show correct msg for the `importAll`
 - remove `-` lockup from the class name search
+
+## 0.6.1
+
+- add a way to escape importing a class but continue importing others for `importAll` & get a msg which one was ignored
+- fix trying to import a class that is already imported as an alias

@@ -2,7 +2,10 @@ import * as vscode from 'vscode'
 import checkForNamespaces from './NamespaceCheck'
 import {PKG_LABEL, Resolver} from './Resolver'
 
-export async function activate(context) {
+export async function activate(context: vscode.ExtensionContext): Promise<{
+    getNamespace: (uri?: vscode.Uri) => Promise<string | undefined>
+    insertNamespace: () => Promise<string | undefined>
+}> {
     const resolver = new Resolver()
     const createDiagnosticCollection = vscode.languages.createDiagnosticCollection(PKG_LABEL)
 
@@ -18,9 +21,9 @@ export async function activate(context) {
 
         vscode.workspace.onWillSaveTextDocument(async(event) => {
             if (
-                event &&
-                event.document.languageId === 'php' &&
-                resolver.config('sort.onSave')
+                event
+                && event.document.languageId === 'php'
+                && resolver.config('sort.onSave')
             ) {
                 await resolver.sortCommand()
             }
@@ -37,4 +40,4 @@ export async function activate(context) {
     }
 }
 
-export function deactivate() { }
+export function deactivate(): void {}
