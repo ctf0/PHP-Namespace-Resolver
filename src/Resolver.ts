@@ -81,16 +81,12 @@ export class Resolver {
 
     async importAll(): Promise<string | vscode.Disposable | undefined> {
         this.setEditorAndAST()
+        this.multiImporting = true
 
         const {useStatements, declarationLines} = this.getDeclarations()
-
-        let phpClasses = [...new Set(
-            this.getFileClassesAndTraits(declarationLines).filter((phpClass) => !this.hasAliasConflict(useStatements, phpClass)),
-        )]
-
         const fqClasses: string[] = []
+        let phpClasses = [...new Set(this.getFileClassesAndTraits(declarationLines))]
 
-        this.multiImporting = true
         // simple classes
         phpClasses = phpClasses.filter((item: string) => {
             if (item.includes('\\')) {
@@ -125,6 +121,7 @@ export class Resolver {
         }
 
         this.setEditorAndAST()
+        phpClasses = phpClasses.filter((phpClass) => !this.hasConflict(useStatements, phpClass) && !this.hasAliasConflict(useStatements, phpClass))
 
         for (const phpClass of phpClasses) {
             try {
