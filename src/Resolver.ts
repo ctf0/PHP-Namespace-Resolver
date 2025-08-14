@@ -1,8 +1,8 @@
 import escapeStringRegexp from 'escape-string-regexp'
 import {execaCommand} from 'execa'
 import {findUp} from 'find-up'
-import fs from 'fs-extra'
 import {compare} from 'natural-orderby'
+import fs from 'node:fs/promises'
 import path from 'node:path'
 import * as vscode from 'vscode'
 import * as Parser from './Parser'
@@ -817,7 +817,7 @@ export class Resolver {
     }
 
     async getComposerFileData(composerFile: string, ignoreError = true): Promise<any> {
-        const composerJson = await fs.readJson(composerFile)
+        const composerJson = JSON.parse(await fs.readFile(composerFile, 'utf-8'))
         let psr4
 
         try {
@@ -858,7 +858,9 @@ export class Resolver {
             currentRelativePath += '/'
         }
 
-        let namespaceBase: any = Object.keys(psr4).find((k) => currentRelativePath.startsWith(psr4[k]))
+        let namespaceBase: any = Object.keys(psr4)
+            .sort((a, b) => b.length - a.length)
+            .find((k) => currentRelativePath.startsWith(psr4[k]))
 
         if (!namespaceBase) {
             if (!ignoreError) {

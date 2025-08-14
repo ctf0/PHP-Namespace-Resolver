@@ -2,7 +2,7 @@
     "name": "php-namespace-resolver",
     "displayName": "PHP Namespace Resolver",
     "description": "Import and expand php namespaces",
-    "version": "0.6.2",
+    "version": "0.6.3",
     "publisher": "ctf0",
     "author": "ctf0",
     "repository": "https://github.com/ctf0/PHP-Namespace-Resolver",
@@ -297,7 +297,6 @@
         "watch": "npm run esbuild"
     },
     "devDependencies": {
-        "@types/fs-extra": "^11.0.4",
         "@types/node": "^24.2.1",
         "@types/vscode": "^1.90.0",
         "esbuild": "^0.25.8",
@@ -307,7 +306,6 @@
         "escape-string-regexp": "^5.0.0",
         "execa": "^9.6.0",
         "find-up": "^7.0.0",
-        "fs-extra": "^11.3.1",
         "lodash.groupby": "^4.6.0",
         "natural-orderby": "^5.0.0",
         "php-parser": "^3.2.5"

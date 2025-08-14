@@ -130,3 +130,7 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 
 - add a way to escape importing a class but continue importing others for `importAll` & get a msg which one was ignored
 - fix trying to import a class that is already imported as an alias
+
+## 0.6.3
+
+- fix not resolving the correct namespace if you have similar auto-loaded paths in `composer.json`
