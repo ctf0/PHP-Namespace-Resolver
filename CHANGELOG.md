@@ -134,3 +134,8 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 ## 0.6.3
 
 - fix not resolving the correct namespace if you have similar auto-loaded paths in `composer.json`
+
+## 0.6.4
+
+- fix adding namespace before declare statement
+- add new command to copy current class fqns `namespaceResolver.copyNamespace`

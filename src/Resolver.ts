@@ -132,6 +132,35 @@ export class Resolver {
             }
         }
 
+        // Add empty line after imports if there are use statements and a class declaration
+        this.setEditorAndAST()
+        const {useStatements: finalUseStatements, declarationLines: finalDeclarationLines} = this.getDeclarations()
+
+        if (finalUseStatements.length > 0 && finalDeclarationLines.class) {
+            const lastUseStatement = finalUseStatements[finalUseStatements.length - 1]
+            const classStartLine = finalDeclarationLines.class.loc.start.line - 1
+
+            // Check if there's no empty line between the last use statement and the class
+            const document = this.EDITOR?.document
+
+            if (document) {
+                const lineAfterLastUse = lastUseStatement.line + 1
+                const lineBeforeClass = classStartLine
+
+                // If the line after the last use statement is the class line, add empty line
+                if (lineAfterLastUse === lineBeforeClass) {
+                    await this.EDITOR?.edit((textEdit) => {
+                        textEdit.insert(
+                            new vscode.Position(lineAfterLastUse, 0),
+                            '\n',
+                        )
+                    }, {undoStopBefore: false, undoStopAfter: false})
+                }
+            }
+        }
+
+        this.multiImporting = false
+
         return this.showMessage('$(check) importing done.')
     }
 
@@ -690,6 +719,13 @@ export class Resolver {
             return _class.loc.start.line - 1
         }
 
+        // Check for declare statement and insert after it
+        const _declare = declarationLines.declare
+
+        if (_declare) {
+            return _declare.loc.end.line
+        }
+
         const namespaceOrTag = declarationLines.namespace || declarationLines.PHPTag
 
         if (namespaceOrTag) {
@@ -921,6 +957,40 @@ export class Resolver {
                 await this.expandCommand(selection)
             }
         }
+    }
+
+    async copyNamespace() {
+        this.setEditorAndAST()
+
+        const selection = this.EDITOR?.selection
+
+        if (!selection) {
+            return this.showMessage('No selection found.', true)
+        }
+
+        const className = this.resolving(selection)
+
+        if (!className) {
+            return this.showMessage('No class is selected.', true)
+        }
+
+        const {useStatements} = this.getDeclarations()
+
+        // Find the class in use statements
+        const matchingUseStatement = useStatements.find((useStatement: any) => {
+            // Check if the use statement ends with the selected class name
+            return useStatement.text.endsWith(`\\${className}`) || useStatement.text === className
+        })
+
+        if (!matchingUseStatement) {
+            return this.showMessage(`No namespace found for "${className}" in use statements.`, true)
+        }
+
+        // Copy the full namespace to clipboard
+        const fullNamespace = matchingUseStatement.text
+        await vscode.env.clipboard.writeText(fullNamespace)
+
+        return this.showMessage(`Copied namespace: ${fullNamespace}`)
     }
 
     async updateFileTypeByName() {

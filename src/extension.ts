@@ -17,6 +17,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<{
         vscode.commands.registerCommand(`${resolver.PKG_NAME}.importAll`, async() => await resolver.importAll()),
         vscode.commands.registerCommand(`${resolver.PKG_NAME}.generateNamespace`, async() => await resolver.generateNamespace()),
         vscode.commands.registerCommand(`${resolver.PKG_NAME}.checkForNamespaces`, async() => await checkForNamespaces(resolver, createDiagnosticCollection)),
+        // other
+        vscode.commands.registerCommand(`${resolver.PKG_NAME}.copyNamespace`, async() => await resolver.copyNamespace()),
         vscode.commands.registerCommand(`${resolver.PKG_NAME}.update_file_type_by_name`, async() => await resolver.updateFileTypeByName()),
 
         vscode.workspace.onWillSaveTextDocument(async(event) => {

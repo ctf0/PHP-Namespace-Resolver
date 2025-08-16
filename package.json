@@ -2,7 +2,7 @@
     "name": "php-namespace-resolver",
     "displayName": "PHP Namespace Resolver",
     "description": "Import and expand php namespaces",
-    "version": "0.6.3",
+    "version": "0.6.4",
     "publisher": "ctf0",
     "author": "ctf0",
     "repository": "https://github.com/ctf0/PHP-Namespace-Resolver",
@@ -49,7 +49,12 @@
             },
             {
                 "command": "namespaceResolver.generateNamespace",
-                "title": "Generate namespace for this file",
+                "title": "Generate Namespace",
+                "category": "PHP Namespace Resolver"
+            },
+            {
+                "command": "namespaceResolver.copyNamespace",
+                "title": "Copy Namespace",
                 "category": "PHP Namespace Resolver"
             },
             {
@@ -87,6 +92,11 @@
             {
                 "command": "namespaceResolver.generateNamespace",
                 "key": "ctrl+alt+g",
+                "when": "editorLangId == php"
+            },
+            {
+                "command": "namespaceResolver.copyNamespace",
+                "key": "ctrl+alt+c",
                 "when": "editorLangId == php"
             }
         ],
@@ -128,6 +138,11 @@
                     "when": "editorLangId == php",
                     "command": "namespaceResolver.generateNamespace",
                     "group": "namespaceresolver"
+                },
+                {
+                    "when": "editorLangId == php",
+                    "command": "namespaceResolver.copyNamespace",
+                    "group": "namespaceresolver"
                 }
             ],
             "commandPalette": [
@@ -149,6 +164,10 @@
                 },
                 {
                     "command": "namespaceResolver.generateNamespace",
+                    "when": "editorLangId == php"
+                },
+                {
+                    "command": "namespaceResolver.copyNamespace",
                     "when": "editorLangId == php"
                 },
                 {
