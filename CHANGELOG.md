@@ -139,3 +139,8 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 
 - fix adding namespace before declare statement
 - add new command to copy current class fqns `namespaceResolver.copyNamespace`
+
+## 0.6.5
+
+- a couple of fixes
+- add support for importing docblock classes through `importAll`
