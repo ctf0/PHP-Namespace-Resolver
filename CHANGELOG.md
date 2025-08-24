@@ -144,3 +144,10 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 
 - a couple of fixes
 - add support for importing docblock classes through `importAll`
+
+## 0.7.0
+
+- remove the sorting cmnd, user should be using linters instead
+- remove `keybindings`, user is free to assign the key he wants
+- change cmnd name `update_file_type_by_name` to `updateFileTypeByName`
+- add new cmnd to copy the class fqcn `copyTypeFQCN`

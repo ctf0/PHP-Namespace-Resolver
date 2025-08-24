@@ -1,7 +1,6 @@
 import escapeStringRegexp from 'escape-string-regexp'
 import {execaCommand} from 'execa'
 import {findUp} from 'find-up'
-import {compare} from 'natural-orderby'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import * as vscode from 'vscode'
@@ -286,7 +285,7 @@ export class Resolver {
             }
 
             return this.importClass(selection, fqcn, replaceClassAfterImport)
-        } catch (error) {
+        } catch {
             if (this.multiImporting) {
                 this.showMessage(`import ignored for "${className}"`, true)
 
@@ -381,16 +380,48 @@ export class Resolver {
         editor.selection = new vscode.Selection(newPosition, newPosition)
     }
 
-    async sortCommand() {
+    async copyTypeFQCN(): any {
         this.setEditorAndAST()
+        const {useStatements} = this.getDeclarations()
+        const {selection} = this.EDITOR
+        const className = this.resolving(selection)
 
-        try {
-            await this.sortImports()
-
-            await this.showMessage('$(check)  Imports are sorted.')
-        } catch (error) {
-            return this.showMessage(error.message, true)
+        if (className === undefined) {
+            return this.showMessage('No class is selected.', true)
         }
+
+        let fqcn = className
+
+        // ex. \Test\Test::class
+        if (/^\\/.test(className)) {
+            // Test::class
+            fqcn = className.replace(/^\\/, '').replace(/\w+\\/g, '')
+        }
+
+        // ex. Test\Test::class
+        if (/\w+\\/.test(className)) {
+            // Test::class
+            fqcn = className.replace(/\w+\\/g, '')
+        }
+
+        let classNS = useStatements.find((item) => {
+            if (item.alias && item.alias == fqcn) {
+                return item
+            }
+
+            if (item.text.endsWith(`\\${fqcn}`) || (item.text == fqcn)) {
+                return item
+            }
+        })?.text
+
+        if (classNS) {
+            classNS = classNS.replace(/\\/g, '\\\\')
+            await vscode.env.clipboard.writeText(classNS)
+
+            return this.showMessage(`(${classNS}) copied to clipboard!`)
+        }
+
+        return this.showMessage('couldnt resolve FQCN', true)
     }
 
     /* Insert ------------------------------------------------------------------- */
@@ -582,85 +613,6 @@ export class Resolver {
         }
 
         return parsedNamespaces
-    }
-
-    async sortImports() {
-        if (this.multiImporting) {
-            return
-        }
-
-        const {useStatements} = this.getDeclarations()
-        const alpha = this.config('sort.alphabetically')
-
-        if (useStatements.length <= 1) {
-            throw new Error(`${PKG_LABEL}: Nothing to sort.`)
-        }
-
-        let sortFunction = (a, b) => {
-            const aText = a.text
-            const bText = b.text
-
-            const aAlias = a.alias || ''
-            const bAlias = b.alias || ''
-
-            if (alpha) {
-                if (aText.toLowerCase() < bText.toLowerCase()) {
-                    return -1
-                }
-
-                if (aText.toLowerCase() > bText.toLowerCase()) {
-                    return 1
-                }
-
-                return 0
-            } else {
-                if ((aText.length + aAlias.length) == (bText.length + bAlias.length)) {
-                    if (aText.toLowerCase() < bText.toLowerCase()) {
-                        return -1
-                    }
-
-                    if (aText.toLowerCase() > bText.toLowerCase()) {
-                        return 1
-                    }
-                }
-
-                return (aText.length + aAlias.length) - (bText.length + bAlias.length)
-            }
-        }
-
-        if (this.config('sort.natural')) {
-            const natsort = compare({
-                order: alpha ? 'asc' : 'desc',
-            })
-
-            sortFunction = (a, b) => natsort(a.text, b.text)
-        }
-
-        const sorted = useStatements.slice().sort(sortFunction)
-
-        for (let i = 0; i < sorted.length; i++) {
-            await this.EDITOR?.edit((textEdit) => {
-                const sortItem = sorted[i]
-                const item = useStatements[i]
-
-                let itemLength = item.text.length + 4 // 'use '
-
-                if (item.alias) {
-                    itemLength += item.alias.length + 4 // ' as '
-                }
-
-                let sortText = `use ${sortItem.text}`
-
-                if (sortItem.alias) {
-                    sortText += ` as ${sortItem.alias}`
-                }
-
-                textEdit.replace(
-                    new vscode.Range(item.line, 0, item.line, itemLength),
-                    sortText,
-                )
-            }, {undoStopBefore: false, undoStopAfter: false})
-        }
     }
 
     setEditorAndAST() {

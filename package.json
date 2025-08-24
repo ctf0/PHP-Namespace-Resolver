@@ -2,7 +2,7 @@
     "name": "php-namespace-resolver",
     "displayName": "PHP Namespace Resolver",
     "description": "Import and expand php namespaces",
-    "version": "0.6.5",
+    "version": "0.7.0",
     "publisher": "ctf0",
     "author": "ctf0",
     "repository": "https://github.com/ctf0/PHP-Namespace-Resolver",
@@ -43,11 +43,6 @@
                 "category": "PHP Namespace Resolver"
             },
             {
-                "command": "namespaceResolver.sort",
-                "title": "Sort Imports",
-                "category": "PHP Namespace Resolver"
-            },
-            {
                 "command": "namespaceResolver.generateNamespace",
                 "title": "Generate Namespace",
                 "category": "PHP Namespace Resolver"
@@ -63,41 +58,14 @@
                 "category": "PHP Namespace Resolver"
             },
             {
-                "command": "namespaceResolver.update_file_type_by_name",
+                "command": "namespaceResolver.updateFileTypeByName",
                 "title": "Update File Type Name By File Name",
                 "category": "PHP Namespace Resolver"
-            }
-        ],
-        "keybindings": [
-            {
-                "command": "namespaceResolver.import",
-                "key": "ctrl+alt+i",
-                "when": "editorLangId == php"
             },
             {
-                "command": "namespaceResolver.importAll",
-                "key": "ctrl+alt+a",
-                "when": "editorLangId == php"
-            },
-            {
-                "command": "namespaceResolver.expand",
-                "key": "ctrl+alt+e",
-                "when": "editorLangId == php"
-            },
-            {
-                "command": "namespaceResolver.sort",
-                "key": "ctrl+alt+s",
-                "when": "editorLangId == php"
-            },
-            {
-                "command": "namespaceResolver.generateNamespace",
-                "key": "ctrl+alt+g",
-                "when": "editorLangId == php"
-            },
-            {
-                "command": "namespaceResolver.copyNamespace",
-                "key": "ctrl+alt+c",
-                "when": "editorLangId == php"
+                "command": "namespaceResolver.copyTypeFQCN",
+                "title": "Copy FQCN",
+                "category": "PHP Namespace Resolver"
             }
         ],
         "submenus": [
@@ -121,17 +89,17 @@
                 },
                 {
                     "when": "editorLangId == php",
+                    "command": "namespaceResolver.copyTypeFQCN",
+                    "group": "namespaceresolver"
+                },
+                {
+                    "when": "editorLangId == php",
                     "command": "namespaceResolver.importAll",
                     "group": "namespaceresolver"
                 },
                 {
                     "when": "editorLangId == php",
                     "command": "namespaceResolver.expand",
-                    "group": "namespaceresolver"
-                },
-                {
-                    "when": "editorLangId == php",
-                    "command": "namespaceResolver.sort",
                     "group": "namespaceresolver"
                 },
                 {
@@ -151,15 +119,15 @@
                     "when": "editorLangId == php"
                 },
                 {
+                    "command": "namespaceResolver.copyTypeFQCN",
+                    "when": "editorLangId == php"
+                },
+                {
                     "command": "namespaceResolver.importAll",
                     "when": "editorLangId == php"
                 },
                 {
                     "command": "namespaceResolver.expand",
-                    "when": "editorLangId == php"
-                },
-                {
-                    "command": "namespaceResolver.sort",
                     "when": "editorLangId == php"
                 },
                 {
@@ -194,26 +162,6 @@
                     "type": "boolean",
                     "default": false,
                     "description": "Show message on status bar instead of notification box"
-                },
-                "namespaceResolver.sort.auto": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Auto sort after imports"
-                },
-                "namespaceResolver.sort.onSave": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Auto sort when a file is saved"
-                },
-                "namespaceResolver.sort.alphabetically": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Sort imports in alphabetical order instead of line length"
-                },
-                "namespaceResolver.sort.natural": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Sort imports using a 'natural order' algorithm"
                 },
                 "namespaceResolver.leadingSeparator": {
                     "type": "boolean",
@@ -326,7 +274,6 @@
         "execa": "^9.6.0",
         "find-up": "^7.0.0",
         "lodash.groupby": "^4.6.0",
-        "natural-orderby": "^5.0.0",
         "php-parser": "^3.2.5"
     }
 }
