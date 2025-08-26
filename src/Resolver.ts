@@ -415,7 +415,45 @@ export class Resolver {
         })?.text
 
         if (classNS) {
-            classNS = classNS.replace(/\\/g, '\\\\')
+            const copyType = await vscode.window.showQuickPick([
+                {
+                    label: 'class',
+                    description: 'Copy as class reference',
+                    detail: 'Ex. Some\\Class::class',
+                },
+                {
+                    label: 'import',
+                    description: 'Copy as import statement',
+                    detail: 'Ex. use SomeClass;',
+                },
+                {
+                    label: 'json',
+                    description: 'Copy as JSON string',
+                    detail: 'Ex. "Some\\\\Class"',
+                },
+            ], {
+                title: 'Copy type namespace to clipboard',
+                placeHolder: 'Select the format to copy',
+            })
+
+            if (!copyType) {
+                return undefined
+            }
+
+            switch (copyType.label) {
+                case 'class':
+                    classNS = `${classNS}::class`
+                    break
+
+                case 'import':
+                    classNS = `use ${classNS};`
+                    break
+
+                case 'json':
+                    classNS = JSON.stringify(classNS)
+                    break
+            }
+
             await vscode.env.clipboard.writeText(classNS)
 
             return this.showMessage(`(${classNS}) copied to clipboard!`)
@@ -931,40 +969,6 @@ export class Resolver {
                 await this.expandCommand(selection)
             }
         }
-    }
-
-    async copyNamespace() {
-        this.setEditorAndAST()
-
-        const selection = this.EDITOR?.selection
-
-        if (!selection) {
-            return this.showMessage('No selection found.', true)
-        }
-
-        const className = this.resolving(selection)
-
-        if (!className) {
-            return this.showMessage('No class is selected.', true)
-        }
-
-        const {useStatements} = this.getDeclarations()
-
-        // Find the class in use statements
-        const matchingUseStatement = useStatements.find((useStatement: any) => {
-            // Check if the use statement ends with the selected class name
-            return useStatement.text.endsWith(`\\${className}`) || useStatement.text === className
-        })
-
-        if (!matchingUseStatement) {
-            return this.showMessage(`No namespace found for "${className}" in use statements.`, true)
-        }
-
-        // Copy the full namespace to clipboard
-        const fullNamespace = matchingUseStatement.text
-        await vscode.env.clipboard.writeText(fullNamespace)
-
-        return this.showMessage(`Copied namespace: ${fullNamespace}`)
     }
 
     async updateFileTypeByName() {

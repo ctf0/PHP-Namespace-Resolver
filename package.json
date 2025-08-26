@@ -2,7 +2,7 @@
     "name": "php-namespace-resolver",
     "displayName": "PHP Namespace Resolver",
     "description": "Import and expand php namespaces",
-    "version": "0.7.0",
+    "version": "0.7.1",
     "publisher": "ctf0",
     "author": "ctf0",
     "repository": "https://github.com/ctf0/PHP-Namespace-Resolver",
@@ -48,23 +48,18 @@
                 "category": "PHP Namespace Resolver"
             },
             {
-                "command": "namespaceResolver.copyNamespace",
-                "title": "Copy Namespace",
+                "command": "namespaceResolver.copyTypeFQCN",
+                "title": "Copy Type Namespace",
+                "category": "PHP Namespace Resolver"
+            },
+            {
+                "command": "namespaceResolver.updateFileTypeByName",
+                "title": "Update File Type By File Name",
                 "category": "PHP Namespace Resolver"
             },
             {
                 "command": "namespaceResolver.checkForNamespaces",
                 "title": "Check for namespaces project wide",
-                "category": "PHP Namespace Resolver"
-            },
-            {
-                "command": "namespaceResolver.updateFileTypeByName",
-                "title": "Update File Type Name By File Name",
-                "category": "PHP Namespace Resolver"
-            },
-            {
-                "command": "namespaceResolver.copyTypeFQCN",
-                "title": "Copy FQCN",
                 "category": "PHP Namespace Resolver"
             }
         ],
@@ -89,11 +84,6 @@
                 },
                 {
                     "when": "editorLangId == php",
-                    "command": "namespaceResolver.copyTypeFQCN",
-                    "group": "namespaceresolver"
-                },
-                {
-                    "when": "editorLangId == php",
                     "command": "namespaceResolver.importAll",
                     "group": "namespaceresolver"
                 },
@@ -109,7 +99,12 @@
                 },
                 {
                     "when": "editorLangId == php",
-                    "command": "namespaceResolver.copyNamespace",
+                    "command": "namespaceResolver.copyTypeFQCN",
+                    "group": "namespaceresolver"
+                },
+                {
+                    "when": "editorLangId == php",
+                    "command": "namespaceResolver.updateFileTypeByName",
                     "group": "namespaceresolver"
                 }
             ],
@@ -119,10 +114,6 @@
                     "when": "editorLangId == php"
                 },
                 {
-                    "command": "namespaceResolver.copyTypeFQCN",
-                    "when": "editorLangId == php"
-                },
-                {
                     "command": "namespaceResolver.importAll",
                     "when": "editorLangId == php"
                 },
@@ -135,7 +126,11 @@
                     "when": "editorLangId == php"
                 },
                 {
-                    "command": "namespaceResolver.copyNamespace",
+                    "command": "namespaceResolver.copyTypeFQCN",
+                    "when": "editorLangId == php"
+                },
+                {
+                    "command": "namespaceResolver.updateFileTypeByName",
                     "when": "editorLangId == php"
                 },
                 {

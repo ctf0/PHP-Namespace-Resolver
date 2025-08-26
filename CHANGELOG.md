@@ -151,3 +151,8 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 - remove `keybindings`, user is free to assign the key he wants
 - change cmnd name `update_file_type_by_name` to `updateFileTypeByName`
 - add new cmnd to copy the class fqcn `copyTypeFQCN`
+
+## 0.7.1
+
+- replace `namespaceResolver.copyNamespace` with `namespaceResolver.copyTypeFQCN`
+- add options for how to copy the fqcn
