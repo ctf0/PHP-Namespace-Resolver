@@ -13,10 +13,10 @@ const regexWordWithNamespace = new RegExp(/\\?[A-Z0-9][a-zA-Z0-9_\\]+/)
 const outputChannel = vscode.window.createOutputChannel(PKG_LABEL, 'log')
 
 export class Resolver {
-    BUILT_IN_CLASSES: string[] = BUILT_IN_CLASSES_FB
-    CLASS_AST: any
-    CWD: string
-    EDITOR: vscode.TextEditor | undefined
+    BUILT_IN_CLASSES : string[] = BUILT_IN_CLASSES_FB
+    CLASS_AST        : any
+    CWD              : string
+    EDITOR           : vscode.TextEditor | undefined
     PKG_NAME = 'namespaceResolver' as const
     multiImporting = false
 
@@ -382,7 +382,7 @@ export class Resolver {
 
     async copyTypeFQCN(): any {
         this.setEditorAndAST()
-        const {useStatements} = this.getDeclarations()
+        const {useStatements, declarationLines} = this.getDeclarations()
         const {selection} = this.EDITOR
         const className = this.resolving(selection)
 
@@ -391,49 +391,58 @@ export class Resolver {
         }
 
         let fqcn = className
+        let isCurrentClass = false
+        let classNS
 
-        // ex. \Test\Test::class
-        if (/^\\/.test(className)) {
-            // Test::class
-            fqcn = className.replace(/^\\/, '').replace(/\w+\\/g, '')
+        if (declarationLines.class.name.name == fqcn) {
+            classNS = `${declarationLines.namespace.name}\\${fqcn}`
+            isCurrentClass = true
         }
 
-        // ex. Test\Test::class
-        if (/\w+\\/.test(className)) {
-            // Test::class
-            fqcn = className.replace(/\w+\\/g, '')
+        if (!isCurrentClass) {
+            // ex. \Test\Test::class
+            if (/^\\/.test(className)) {
+                // Test::class
+                fqcn = className.replace(/^\\/, '').replace(/\w+\\/g, '')
+            }
+
+            // ex. Test\Test::class
+            if (/\w+\\/.test(className)) {
+                // Test::class
+                fqcn = className.replace(/\w+\\/g, '')
+            }
+
+            classNS = useStatements.find((item) => {
+                if (item.alias && item.alias == fqcn) {
+                    return item
+                }
+
+                if (item.text.endsWith(`\\${fqcn}`) || (item.text == fqcn)) {
+                    return item
+                }
+            })?.text
         }
-
-        let classNS = useStatements.find((item) => {
-            if (item.alias && item.alias == fqcn) {
-                return item
-            }
-
-            if (item.text.endsWith(`\\${fqcn}`) || (item.text == fqcn)) {
-                return item
-            }
-        })?.text
 
         if (classNS) {
             const copyType = await vscode.window.showQuickPick([
                 {
-                    label: 'class',
-                    description: 'Copy as class reference',
-                    detail: 'Ex. Some\\Class::class',
+                    label       : 'class',
+                    description : 'Copy as class reference',
+                    detail      : 'Ex. Some\\Class::class',
                 },
                 {
-                    label: 'import',
-                    description: 'Copy as import statement',
-                    detail: 'Ex. use SomeClass;',
+                    label       : 'import',
+                    description : 'Copy as import statement',
+                    detail      : 'Ex. use SomeClass;',
                 },
                 {
-                    label: 'json',
-                    description: 'Copy as JSON string',
-                    detail: 'Ex. "Some\\\\Class"',
+                    label       : 'json',
+                    description : 'Copy as JSON string',
+                    detail      : 'Ex. "Some\\\\Class"',
                 },
             ], {
-                title: 'Copy type namespace to clipboard',
-                placeHolder: 'Select the format to copy',
+                title       : 'Copy type namespace to clipboard',
+                placeHolder : 'Select the format to copy',
             })
 
             if (!copyType) {
@@ -490,7 +499,7 @@ export class Resolver {
 
     async insertAsAlias(selection, fqcn, useStatements, declarationLines) {
         const alias: any = await vscode.window.showInputBox({
-            placeHolder: 'Enter an alias or leave it empty to replace',
+            placeHolder : 'Enter an alias or leave it empty to replace',
         })
 
         if (alias === undefined) {
@@ -694,21 +703,21 @@ export class Resolver {
     getDeclarations() {
         const useStatements: any = []
         const declarationLines = {
-            PHPTag: this.CLASS_AST._openTag,
-            declare: this.CLASS_AST._declare,
-            namespace: this.CLASS_AST._namespace,
-            useStatement: this.CLASS_AST._use,
-            class: this.CLASS_AST._class,
-            trait: this.CLASS_AST._trait,
+            PHPTag       : this.CLASS_AST._openTag,
+            declare      : this.CLASS_AST._declare,
+            namespace    : this.CLASS_AST._namespace,
+            useStatement : this.CLASS_AST._use,
+            class        : this.CLASS_AST._class,
+            trait        : this.CLASS_AST._trait,
         }
 
         for (const useStatement of declarationLines.useStatement) {
             const item = useStatement.items[0]
 
             useStatements.push({
-                text: item.name,
-                alias: item.alias?.name,
-                line: useStatement.loc.start.line - 1,
+                text  : item.name,
+                alias : item.alias?.name,
+                line  : useStatement.loc.start.line - 1,
             })
         }
 
@@ -722,27 +731,29 @@ export class Resolver {
         const _use = declarationLines.useStatement
 
         if (_use.length) {
-            return _use[0].loc.start.line - 1
+            return _use[0].loc.start.line
         }
 
-        const _class = declarationLines.class
+        const namespace = declarationLines.namespace
 
-        if (_class) {
-            return _class.loc.start.line - 1
+        if (namespace) {
+            return namespace.loc.end.line
         }
 
-        // Check for declare statement and insert after it
         const _declare = declarationLines.declare
 
         if (_declare) {
             return _declare.loc.end.line
         }
 
-        const namespaceOrTag = declarationLines.namespace || declarationLines.PHPTag
+        // bcz the parser can only collect either comments or attrGroups
+        //
+        // const _class = declarationLines.class
+        // if (_class) {
+        //     return _class.loc.start.line
+        // }
 
-        if (namespaceOrTag) {
-            return namespaceOrTag.loc.end.line
-        }
+        return declarationLines.PHPTag.loc.end.line
     }
 
     resolving(selection: vscode.Selection | string | any): string | undefined {
@@ -794,8 +805,8 @@ export class Resolver {
             ns = await this.createNamespace(
                 currentUri,
                 {
-                    psrData: psr4,
-                    composerFilePath: composerFile,
+                    psrData          : psr4,
+                    composerFilePath : composerFile,
                 },
                 returnDontInsert,
             )
@@ -1017,8 +1028,8 @@ export class Resolver {
 
         try {
             const {stdout} = await execaCommand(`${phpCommand} -r 'echo json_encode(${method});'`, {
-                cwd: this.CWD,
-                shell: vscode.env.shell,
+                cwd   : this.CWD,
+                shell : vscode.env.shell,
             })
 
             return JSON.parse(stdout)
@@ -1051,8 +1062,8 @@ export class Resolver {
             }
 
             results.push({
-                position: position,
-                match: pattern,
+                position : position,
+                match    : pattern,
             })
             i++
         }

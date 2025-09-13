@@ -1,113 +1,163 @@
 {
-    "name": "php-namespace-resolver",
-    "displayName": "PHP Namespace Resolver",
-    "description": "Import and expand php namespaces",
-    "version": "0.7.1",
-    "publisher": "ctf0",
-    "author": "ctf0",
-    "repository": "https://github.com/ctf0/PHP-Namespace-Resolver",
-    "engines": {
-        "vscode": "^1.90.0"
-    },
-    "categories": [
-        "Other"
-    ],
-    "keywords": [
-        "php",
-        "namespace",
-        "class",
-        "import",
-        "expand"
-    ],
     "activationEvents": [
         "workspaceContains:composer.json",
         "onStartupFinished"
     ],
-    "main": "./out/main",
-    "icon": "images/icon.png",
+    "author": "ctf0",
+    "categories": [
+        "Other"
+    ],
     "contributes": {
         "commands": [
             {
+                "category": "PHP Namespace Resolver",
                 "command": "namespaceResolver.import",
-                "title": "Import Class",
-                "category": "PHP Namespace Resolver"
+                "title": "Import Class"
             },
             {
+                "category": "PHP Namespace Resolver",
                 "command": "namespaceResolver.importAll",
-                "title": "Import All Classes",
-                "category": "PHP Namespace Resolver"
+                "title": "Import All Classes"
             },
             {
+                "category": "PHP Namespace Resolver",
                 "command": "namespaceResolver.expand",
-                "title": "Expand Class",
-                "category": "PHP Namespace Resolver"
+                "title": "Expand Class"
             },
             {
+                "category": "PHP Namespace Resolver",
                 "command": "namespaceResolver.generateNamespace",
-                "title": "Generate Namespace",
-                "category": "PHP Namespace Resolver"
+                "title": "Generate Namespace"
             },
             {
+                "category": "PHP Namespace Resolver",
                 "command": "namespaceResolver.copyTypeFQCN",
-                "title": "Copy Type Namespace",
-                "category": "PHP Namespace Resolver"
+                "title": "Copy Type Namespace"
             },
             {
+                "category": "PHP Namespace Resolver",
                 "command": "namespaceResolver.updateFileTypeByName",
-                "title": "Update File Type By File Name",
-                "category": "PHP Namespace Resolver"
+                "title": "Update File Type By File Name"
             },
             {
+                "category": "PHP Namespace Resolver",
                 "command": "namespaceResolver.checkForNamespaces",
-                "title": "Check for namespaces project wide",
-                "category": "PHP Namespace Resolver"
+                "title": "Check for namespaces project wide"
             }
         ],
-        "submenus": [
-            {
-                "id": "namespaceresolver.editor.context",
-                "label": "PHP Namespace Resolver"
-            }
-        ],
+        "configuration": {
+            "properties": {
+                "namespaceResolver.checkForNamespaces.classMapFileGlob": {
+                    "default": "vendor/**/composer/autoload_classmap.php",
+                    "description": "composer autoload_classmap file(s) path glob",
+                    "type": "string"
+                },
+                "namespaceResolver.checkForNamespaces.rg.command": {
+                    "default": "rg",
+                    "markdownDescription": "ripgrep command path (require [ripgrep](https://github.com/BurntSushi/ripgrep#installation))",
+                    "type": "string"
+                },
+                "namespaceResolver.checkForNamespaces.rg.excludeDirs": {
+                    "default": [
+                        "vendor",
+                        "stubs",
+                        "bootstrap",
+                        "resources",
+                        "storage",
+                        "lang"
+                    ],
+                    "items": {
+                        "type": "string"
+                    },
+                    "markdownDescription": "exclude directories from namespace import search\n\n(.gitignore contents are already excluded)",
+                    "minItems": 1,
+                    "type": "array",
+                    "uniqueItems": true
+                },
+                "namespaceResolver.checkForNamespaces.rg.excludeFiles": {
+                    "default": [
+                        "_ide_helper.php",
+                        ".phpstorm.meta.php"
+                    ],
+                    "items": {
+                        "type": "string"
+                    },
+                    "markdownDescription": "exclude files from namespace import search\n\n(.gitignore contents are already excluded)",
+                    "minItems": 1,
+                    "type": "array",
+                    "uniqueItems": true
+                },
+                "namespaceResolver.exclude": {
+                    "default": [
+                        "**/node_modules/**"
+                    ],
+                    "description": "Exclude glob pattern while finding files",
+                    "items": {
+                        "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array",
+                    "uniqueItems": true
+                },
+                "namespaceResolver.forceReplaceSimilarImports": {
+                    "default": true,
+                    "markdownDescription": "when `false` both new & old will be kept, when `true` old will be replaced with new",
+                    "type": "boolean"
+                },
+                "namespaceResolver.leadingSeparator": {
+                    "default": true,
+                    "description": "Expand class with leading namespace separator",
+                    "type": "boolean"
+                },
+                "namespaceResolver.namespacePrefix": {
+                    "default": "",
+                    "markdownDescription": "add a prefix for all generated namespaces\n\nex.`My\\Project\\`",
+                    "type": [
+                        "string"
+                    ]
+                },
+                "namespaceResolver.php.builtIns": {
+                    "default": [
+                        "get_declared_classes()",
+                        "get_declared_interfaces()"
+                    ],
+                    "description": "php methods to get builtin/extension classes & interfaces",
+                    "items": {
+                        "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array",
+                    "uniqueItems": true
+                },
+                "namespaceResolver.php.command": {
+                    "default": "php",
+                    "description": "php command path",
+                    "type": "string"
+                },
+                "namespaceResolver.removePath": {
+                    "default": [],
+                    "items": {
+                        "type": "string"
+                    },
+                    "markdownDescription": "remove parts from the namespace by regex\n\nex.`remove 'V[0-9]+(\\\\)?' from My\\Project\\V100400\\Folder`",
+                    "minItems": 0,
+                    "type": "array",
+                    "uniqueItems": true
+                },
+                "namespaceResolver.showMessageOnStatusBar": {
+                    "default": false,
+                    "description": "Show message on status bar instead of notification box",
+                    "type": "boolean"
+                },
+                "namespaceResolver.useFolderTree": {
+                    "default": false,
+                    "markdownDescription": "use folder hierarchy tree if no `composer.json` file is found",
+                    "type": "boolean"
+                }
+            },
+            "title": "PHP Namespace Resolver"
+        },
         "menus": {
-            "editor/context": [
-                {
-                    "submenu": "namespaceresolver.editor.context",
-                    "group": "namespaceresolver"
-                }
-            ],
-            "namespaceresolver.editor.context": [
-                {
-                    "when": "editorLangId == php",
-                    "command": "namespaceResolver.import",
-                    "group": "namespaceresolver"
-                },
-                {
-                    "when": "editorLangId == php",
-                    "command": "namespaceResolver.importAll",
-                    "group": "namespaceresolver"
-                },
-                {
-                    "when": "editorLangId == php",
-                    "command": "namespaceResolver.expand",
-                    "group": "namespaceresolver"
-                },
-                {
-                    "when": "editorLangId == php",
-                    "command": "namespaceResolver.generateNamespace",
-                    "group": "namespaceresolver"
-                },
-                {
-                    "when": "editorLangId == php",
-                    "command": "namespaceResolver.copyTypeFQCN",
-                    "group": "namespaceresolver"
-                },
-                {
-                    "when": "editorLangId == php",
-                    "command": "namespaceResolver.updateFileTypeByName",
-                    "group": "namespaceresolver"
-                }
-            ],
             "commandPalette": [
                 {
                     "command": "namespaceResolver.import",
@@ -136,133 +186,52 @@
                 {
                     "command": "namespaceResolver.checkForNamespaces"
                 }
+            ],
+            "editor/context": [
+                {
+                    "group": "namespaceresolver",
+                    "submenu": "namespaceresolver.editor.context"
+                }
+            ],
+            "namespaceresolver.editor.context": [
+                {
+                    "command": "namespaceResolver.import",
+                    "group": "namespaceresolver",
+                    "when": "editorLangId == php"
+                },
+                {
+                    "command": "namespaceResolver.importAll",
+                    "group": "namespaceresolver",
+                    "when": "editorLangId == php"
+                },
+                {
+                    "command": "namespaceResolver.expand",
+                    "group": "namespaceresolver",
+                    "when": "editorLangId == php"
+                },
+                {
+                    "command": "namespaceResolver.generateNamespace",
+                    "group": "namespaceresolver",
+                    "when": "editorLangId == php"
+                },
+                {
+                    "command": "namespaceResolver.copyTypeFQCN",
+                    "group": "namespaceresolver",
+                    "when": "editorLangId == php"
+                },
+                {
+                    "command": "namespaceResolver.updateFileTypeByName",
+                    "group": "namespaceresolver",
+                    "when": "editorLangId == php"
+                }
             ]
         },
-        "configuration": {
-            "title": "PHP Namespace Resolver",
-            "properties": {
-                "namespaceResolver.exclude": {
-                    "type": "array",
-                    "default": [
-                        "**/node_modules/**"
-                    ],
-                    "items": {
-                        "type": "string"
-                    },
-                    "minItems": 1,
-                    "uniqueItems": true,
-                    "description": "Exclude glob pattern while finding files"
-                },
-                "namespaceResolver.showMessageOnStatusBar": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Show message on status bar instead of notification box"
-                },
-                "namespaceResolver.leadingSeparator": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "Expand class with leading namespace separator"
-                },
-                "namespaceResolver.forceReplaceSimilarImports": {
-                    "type": "boolean",
-                    "default": true,
-                    "markdownDescription": "when `false` both new & old will be kept, when `true` old will be replaced with new"
-                },
-                "namespaceResolver.php.command": {
-                    "type": "string",
-                    "default": "php",
-                    "description": "php command path"
-                },
-                "namespaceResolver.php.builtIns": {
-                    "type": "array",
-                    "default": [
-                        "get_declared_classes()",
-                        "get_declared_interfaces()"
-                    ],
-                    "items": {
-                        "type": "string"
-                    },
-                    "minItems": 1,
-                    "uniqueItems": true,
-                    "description": "php methods to get builtin/extension classes & interfaces"
-                },
-                "namespaceResolver.checkForNamespaces.classMapFileGlob": {
-                    "type": "string",
-                    "default": "vendor/**/composer/autoload_classmap.php",
-                    "description": "composer autoload_classmap file(s) path glob"
-                },
-                "namespaceResolver.checkForNamespaces.rg.command": {
-                    "type": "string",
-                    "default": "rg",
-                    "markdownDescription": "ripgrep command path (require [ripgrep](https://github.com/BurntSushi/ripgrep#installation))"
-                },
-                "namespaceResolver.checkForNamespaces.rg.excludeDirs": {
-                    "type": "array",
-                    "default": [
-                        "vendor",
-                        "stubs",
-                        "bootstrap",
-                        "resources",
-                        "storage",
-                        "lang"
-                    ],
-                    "items": {
-                        "type": "string"
-                    },
-                    "minItems": 1,
-                    "uniqueItems": true,
-                    "markdownDescription": "exclude directories from namespace import search\n\n(.gitignore contents are already excluded)"
-                },
-                "namespaceResolver.removePath": {
-                    "type": "array",
-                    "default": [],
-                    "items": {
-                        "type": "string"
-                    },
-                    "minItems": 0,
-                    "uniqueItems": true,
-                    "markdownDescription": "remove parts from the namespace by regex\n\nex.`remove 'V[0-9]+(\\\\)?' from My\\Project\\V100400\\Folder`"
-                },
-                "namespaceResolver.useFolderTree": {
-                    "type": "boolean",
-                    "default": false,
-                    "markdownDescription": "use folder hierarchy tree if no `composer.json` file is found"
-                },
-                "namespaceResolver.namespacePrefix": {
-                    "type": [
-                        "string"
-                    ],
-                    "default": "",
-                    "markdownDescription": "add a prefix for all generated namespaces\n\nex.`My\\Project\\`"
-                },
-                "namespaceResolver.checkForNamespaces.rg.excludeFiles": {
-                    "type": "array",
-                    "default": [
-                        "_ide_helper.php",
-                        ".phpstorm.meta.php"
-                    ],
-                    "items": {
-                        "type": "string"
-                    },
-                    "minItems": 1,
-                    "uniqueItems": true,
-                    "markdownDescription": "exclude files from namespace import search\n\n(.gitignore contents are already excluded)"
-                }
+        "submenus": [
+            {
+                "id": "namespaceresolver.editor.context",
+                "label": "PHP Namespace Resolver"
             }
-        }
-    },
-    "scripts": {
-        "vscode:prepublish": "npm run esbuild-base -- --pure:console.log --minify",
-        "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
-        "esbuild": "npm run esbuild-base -- --sourcemap",
-        "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
-        "watch": "npm run esbuild"
-    },
-    "devDependencies": {
-        "@types/node": "^24.2.1",
-        "@types/vscode": "^1.90.0",
-        "esbuild": "^0.25.8",
-        "typescript": "^5.9.2"
+        ]
     },
     "dependencies": {
         "escape-string-regexp": "^5.0.0",
@@ -270,5 +239,36 @@
         "find-up": "^7.0.0",
         "lodash.groupby": "^4.6.0",
         "php-parser": "^3.2.5"
-    }
+    },
+    "description": "Import and expand php namespaces",
+    "devDependencies": {
+        "@types/node": "^24.3.3",
+        "@types/vscode": "^1.90.0",
+        "esbuild": "^0.25.9",
+        "typescript": "^5.9.2"
+    },
+    "displayName": "PHP Namespace Resolver",
+    "engines": {
+        "vscode": "^1.90.0"
+    },
+    "icon": "images/icon.png",
+    "keywords": [
+        "php",
+        "namespace",
+        "class",
+        "import",
+        "expand"
+    ],
+    "main": "./out/main",
+    "name": "php-namespace-resolver",
+    "publisher": "ctf0",
+    "repository": "https://github.com/ctf0/PHP-Namespace-Resolver",
+    "scripts": {
+        "esbuild": "npm run esbuild-base -- --sourcemap",
+        "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
+        "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+        "vscode:prepublish": "npm run esbuild-base -- --pure:console.log --minify",
+        "watch": "npm run esbuild"
+    },
+    "version": "0.7.3"
 }

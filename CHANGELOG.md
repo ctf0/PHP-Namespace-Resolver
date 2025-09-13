@@ -156,3 +156,11 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 
 - replace `namespaceResolver.copyNamespace` with `namespaceResolver.copyTypeFQCN`
 - add options for how to copy the fqcn
+
+## 0.7.2
+
+- fix not able to copy the fqcn of the current class
+
+## 0.7.3
+
+- fix not importing in the correct place

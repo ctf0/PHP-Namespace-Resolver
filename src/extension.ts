@@ -3,8 +3,8 @@ import checkForNamespaces from './NamespaceCheck'
 import {PKG_LABEL, Resolver} from './Resolver'
 
 export async function activate(context: vscode.ExtensionContext): Promise<{
-    getNamespace: (uri?: vscode.Uri) => Promise<string | undefined>
-    insertNamespace: () => Promise<string | undefined>
+    getNamespace    : (uri?: vscode.Uri) => Promise<string | undefined>
+    insertNamespace : () => Promise<string | undefined>
 }> {
     const resolver = new Resolver()
     const createDiagnosticCollection = vscode.languages.createDiagnosticCollection(PKG_LABEL)
