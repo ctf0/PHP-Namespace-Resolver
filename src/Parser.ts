@@ -38,8 +38,8 @@ export function buildClassASTFromContent(content: string): any {
                 },
             },
             _declare   : _declare,
-            _namespace : _namespace ? getCorrectLoc(_namespace) : null,
-            _class     : _class ? getCorrectLoc(_class) : null,
+            _namespace : _namespace ? getNamespaceLoc(_namespace, _use![0] || _class) : null,
+            _class     : _class,
             _use       : _use,
             _trait     : _trait,
         }
@@ -55,26 +55,13 @@ export function getNamespaceInfo(content: string) {
     return AST.children?.find((item: any) => item.kind == 'namespace')
 }
 
-function getCorrectLoc(item: any) {
-    let commentOrAttrGroup = undefined
-    const comments = item.leadingComments?.at(0)
-    const attrs = item.attrGroups?.at(0)
-
-    if (item.leadingComments && item.attrGroups) {
-        commentOrAttrGroup = comments.loc.start.line < attrs.loc.start.line
-            ? comments.loc.start.line
-            : attrs.loc.start.line
-    } else if (item.leadingComments) {
-        commentOrAttrGroup = comments.loc.start.line
-    } else if (item.attrGroups) {
-        commentOrAttrGroup = attrs.loc.start.line
-    }
+function getNamespaceLoc(start, end) {
+    const line = end.leadingComments ? end.leadingComments[0].loc.start.line : end.loc.start.line
 
     return {
-        ...item,
         loc : {
-            start : {line: (commentOrAttrGroup || item.loc.start.line) - 1, column: 0},
-            end   : item.loc.end,
+            start : start.loc.start,
+            end   : {line: line, column: 0},
         },
     }
 }
