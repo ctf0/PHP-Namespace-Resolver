@@ -59,6 +59,7 @@ function getNamespaceLoc(start, end) {
     const line = end.leadingComments ? end.leadingComments[0].loc.start.line : end.loc.start.line
 
     return {
+        ...start,
         loc : {
             start : start.loc.start,
             end   : {line: line, column: 0},

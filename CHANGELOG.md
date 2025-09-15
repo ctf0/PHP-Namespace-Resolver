@@ -164,3 +164,7 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 ## 0.7.3
 
 - fix not importing in the correct place
+
+## 0.7.5
+
+- fucken typo

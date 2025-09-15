@@ -270,5 +270,5 @@
         "vscode:prepublish": "npm run esbuild-base -- --pure:console.log --minify",
         "watch": "npm run esbuild"
     },
-    "version": "0.7.4"
+    "version": "0.7.5"
 }
