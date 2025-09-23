@@ -176,6 +176,7 @@ export class Resolver {
         phpClasses = phpClasses.filter((item: string) => {
             if (item.includes('\\')) {
                 fqClasses.push(item)
+
                 return false
             }
 
@@ -737,7 +738,7 @@ export class Resolver {
         const namespace = declarationLines.namespace
 
         if (namespace) {
-            return namespace.loc.end.line
+            return namespace.loc.start.line
         }
 
         const _declare = declarationLines.declare
