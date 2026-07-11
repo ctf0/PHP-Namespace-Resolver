@@ -260,6 +260,8 @@ export class Resolver {
         try {
             let fqcn
             let replaceClassAfterImport = false
+            const currentNamespace = this.getDeclarations().declarationLines.namespace?.name
+            const isCurrentNamespace = (namespace) => currentNamespace === namespace.slice(0, namespace.lastIndexOf('\\'))
 
             // ex. \Test\Test::class
             if (/^\\/.test(className)) {
@@ -275,14 +277,14 @@ export class Resolver {
 
                 const files = await this.findFiles(fqcn)
                 const namespaces = await this.findNamespaces(fqcn, files)
-                fqcn = await this.pickClass(namespaces.filter((item) => item.endsWith(className)))
+                fqcn = await this.pickClass(namespaces.filter((item) => item.endsWith(className) && !isCurrentNamespace(item)))
             }
             // ex. Test::class
             else {
                 const files = await this.findFiles(className)
                 const namespaces = await this.findNamespaces(className, files)
 
-                fqcn = await this.pickClass(namespaces)
+                fqcn = await this.pickClass(namespaces.filter((item) => !isCurrentNamespace(item)))
             }
 
             return this.importClass(selection, fqcn, replaceClassAfterImport)
@@ -297,10 +299,14 @@ export class Resolver {
         }
     }
 
-    importClass(selection, fqcn, replaceClassAfterImport = false) {
+    async importClass(selection, fqcn, replaceClassAfterImport = false) {
         try {
             const {useStatements, declarationLines} = this.getDeclarations()
             const classBaseName = fqcn.match(/(\w+)/g).pop()
+
+            if (!this.multiImporting && declarationLines.class?.name?.name === classBaseName) {
+                return this.insertAsAlias(selection, fqcn, useStatements, declarationLines, true)
+            }
 
             if (this.hasConflict(useStatements, classBaseName)) {
                 if (this.multiImporting) {
@@ -484,7 +490,7 @@ export class Resolver {
         await this.EDITOR?.edit((textEdit) => {
             textEdit.insert(
                 new vscode.Position(insertLine, 0),
-                `${text};\n`,
+                `${/^\s*use\b/.test(this.EDITOR?.document.lineAt(insertLine - 1).text ?? '') ? '' : '\n'}${text};\n`,
             )
         }, {undoStopBefore: false, undoStopAfter: false})
 
@@ -498,17 +504,21 @@ export class Resolver {
         }
     }
 
-    async insertAsAlias(selection, fqcn, useStatements, declarationLines) {
+    async insertAsAlias(selection, fqcn, useStatements, declarationLines, requireAlias = false) {
         const alias: any = await vscode.window.showInputBox({
-            placeHolder : 'Enter an alias or leave it empty to replace',
+            placeHolder : requireAlias ? 'Enter an alias' : 'Enter an alias or leave it empty to replace',
         })
 
         if (alias === undefined) {
             return
         }
 
-        if (alias === '') {
+        if (alias === '' && !requireAlias) {
             return this.insertNewUseStatement(selection, fqcn, useStatements, declarationLines)
+        }
+
+        if (alias === '') {
+            return this.insertAsAlias(selection, fqcn, useStatements, declarationLines, true)
         }
 
         if (this.hasAliasConflict(useStatements, alias)) {
@@ -827,7 +837,7 @@ export class Resolver {
 
         ns = this.config('namespacePrefix') + ns
 
-        const namespace = '\n' + 'namespace ' + ns + ';' + '\n'
+        const namespace = '\n' + 'namespace ' + ns + ';' + '\n\n'
 
         if (returnDontInsert) {
             return namespace

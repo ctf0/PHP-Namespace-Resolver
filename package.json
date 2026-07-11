@@ -235,21 +235,21 @@
     },
     "dependencies": {
         "escape-string-regexp": "^5.0.0",
-        "execa": "^9.6.0",
-        "find-up": "^7.0.0",
+        "execa": "^9.6.1",
+        "find-up": "^8.0.0",
         "lodash.groupby": "^4.6.0",
-        "php-parser": "^3.2.5"
+        "php-parser": "^3.7.0"
     },
     "description": "Import and expand php namespaces",
     "devDependencies": {
-        "@types/node": "^24.3.3",
-        "@types/vscode": "^1.90.0",
-        "esbuild": "^0.25.9",
-        "typescript": "^5.9.2"
+        "@types/node": "^26.1.1",
+        "@types/vscode": "^1.110.0",
+        "esbuild": "^0.28.1",
+        "typescript": "^7.0.2"
     },
     "displayName": "PHP Namespace Resolver",
     "engines": {
-        "vscode": "^1.90.0"
+        "vscode": "^1.110.0"
     },
     "icon": "images/icon.png",
     "keywords": [
@@ -270,5 +270,5 @@
         "vscode:prepublish": "npm run esbuild-base -- --pure:console.log --minify",
         "watch": "npm run esbuild"
     },
-    "version": "0.7.6"
+    "version": "0.7.7"
 }
