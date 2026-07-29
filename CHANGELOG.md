@@ -168,3 +168,9 @@ All notable changes to the "php-namespace-resolver" extension will be documented
 ## 0.7.5
 
 - fucken typo
+
+## 0.7.8
+
+- fix showing empty picker for same namespace import
+- add new option to the copy class type picker
+- fix not allowing to copy class type that doesnt have an import in the current class

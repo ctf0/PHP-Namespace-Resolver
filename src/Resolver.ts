@@ -218,7 +218,14 @@ export class Resolver {
             }
         }
 
-        // Add empty line after imports if there are use statements and a class declaration
+        await this.ensureBlankLineAfterImports()
+
+        this.multiImporting = false
+
+        this.showMessage('$(check) importing done.')
+    }
+
+    async ensureBlankLineAfterImports() {
         this.setEditorAndAST()
         const {useStatements: finalUseStatements, declarationLines: finalDeclarationLines} = this.getDeclarations()
 
@@ -226,14 +233,12 @@ export class Resolver {
             const lastUseStatement = finalUseStatements[finalUseStatements.length - 1]
             const classStartLine = finalDeclarationLines.class.loc.start.line - 1
 
-            // Check if there's no empty line between the last use statement and the class
             const document = this.EDITOR?.document
 
             if (document) {
                 const lineAfterLastUse = lastUseStatement.line + 1
                 const lineBeforeClass = classStartLine
 
-                // If the line after the last use statement is the class line, add empty line
                 if (lineAfterLastUse === lineBeforeClass) {
                     await this.EDITOR?.edit((textEdit) => {
                         textEdit.insert(
@@ -244,10 +249,6 @@ export class Resolver {
                 }
             }
         }
-
-        this.multiImporting = false
-
-        this.showMessage('$(check) importing done.')
     }
 
     async importCommand(selection: vscode.Selection | string): Promise<string | vscode.Disposable | undefined> {
@@ -284,7 +285,7 @@ export class Resolver {
                 const files = await this.findFiles(className)
                 const namespaces = await this.findNamespaces(className, files)
 
-                fqcn = await this.pickClass(namespaces.filter((item) => !isCurrentNamespace(item)))
+                fqcn = await this.pickClass(namespaces)
             }
 
             return this.importClass(selection, fqcn, replaceClassAfterImport)
@@ -412,9 +413,8 @@ export class Resolver {
                 // Test::class
                 fqcn = className.replace(/^\\/, '').replace(/\w+\\/g, '')
             }
-
             // ex. Test\Test::class
-            if (/\w+\\/.test(className)) {
+            else if (/\w+\\/.test(className)) {
                 // Test::class
                 fqcn = className.replace(/\w+\\/g, '')
             }
@@ -430,52 +430,65 @@ export class Resolver {
             })?.text
         }
 
-        if (classNS) {
-            const copyType = await vscode.window.showQuickPick([
-                {
-                    label       : 'class',
-                    description : 'Copy as class reference',
-                    detail      : 'Ex. Some\\Class::class',
-                },
-                {
-                    label       : 'import',
-                    description : 'Copy as import statement',
-                    detail      : 'Ex. use SomeClass;',
-                },
-                {
-                    label       : 'json',
-                    description : 'Copy as JSON string',
-                    detail      : 'Ex. "Some\\\\Class"',
-                },
-            ], {
-                title       : 'Copy type namespace to clipboard',
-                placeHolder : 'Select the format to copy',
-            })
+        if (!classNS) {
+            const files = await this.findFiles(className)
+            const namespaces = await this.findNamespaces(className, files)
 
-            if (!copyType) {
+            classNS = await this.pickClass(namespaces)
+        }
+
+        if (classNS) {
+            const formatted = await this.pickCopyFormat(classNS)
+
+            if (!formatted) {
                 return undefined
             }
 
-            switch (copyType.label) {
-                case 'class':
-                    classNS = `${classNS}::class`
-                    break
+            await vscode.env.clipboard.writeText(formatted)
 
-                case 'import':
-                    classNS = `use ${classNS};`
-                    break
-
-                case 'json':
-                    classNS = JSON.stringify(classNS)
-                    break
-            }
-
-            await vscode.env.clipboard.writeText(classNS)
-
-            return this.showMessage(`(${classNS}) copied to clipboard!`)
+            return this.showMessage(`(${formatted}) copied to clipboard!`)
         }
 
         return this.showMessage('couldnt resolve FQCN', true)
+    }
+
+    async pickCopyFormat(classNS: string): Promise<string | undefined> {
+        const copyType = await vscode.window.showQuickPick([
+            {
+                label       : 'class',
+                description : 'Copy as class reference',
+                detail      : 'Ex. \\Some\\Class::class',
+            },
+            {
+                label       : 'type',
+                description : 'Copy as class type reference',
+                detail      : 'Ex. \\Some\\Class',
+            },
+            {
+                label       : 'import',
+                description : 'Copy as import statement',
+                detail      : 'Ex. use SomeClass;',
+            },
+            {
+                label       : 'json',
+                description : 'Copy as JSON string',
+                detail      : 'Ex. "Some\\\\Class"',
+            },
+        ], {
+            title       : 'Copy type namespace to clipboard',
+            placeHolder : 'Select the format to copy',
+        })
+
+        if (!copyType) {
+            return undefined
+        }
+
+        switch (copyType.label) {
+            case 'class':  return `\\${classNS}::class`
+            case 'type':   return `\\${classNS}`
+            case 'import': return `use ${classNS};`
+            case 'json':   return JSON.stringify(classNS)
+        }
     }
 
     /* Insert ------------------------------------------------------------------- */
@@ -806,29 +819,10 @@ export class Resolver {
         const editor: any = this.EDITOR
         const currentUri: vscode.Uri = uri || editor?.document.uri
 
-        let composerFile
-        let psr4
-        let ns
+        let ns = await this.resolveNamespaceForUri(currentUri, returnDontInsert)
 
-        try {
-            composerFile = await this.findComposerFileByUri(currentUri, returnDontInsert)
-            psr4 = await this.getComposerFileData(composerFile, returnDontInsert)
-            ns = await this.createNamespace(
-                currentUri,
-                {
-                    psrData          : psr4,
-                    composerFilePath : composerFile,
-                },
-                returnDontInsert,
-            )
-        } catch {
-            if (this.config('useFolderTree')) {
-                ns = this.getFileDirFromPath(currentUri.path.replace(this.CWD, ''))
-                    .replace(/^\//gm, '')
-                    .replace(/\//g, '\\')
-            } else {
-                return undefined
-            }
+        if (ns === undefined) {
+            return undefined
         }
 
         this.config('removePath').forEach((regex) => {
@@ -869,6 +863,25 @@ export class Resolver {
             await this.showMessage(error.message, true)
 
             return undefined
+        }
+    }
+
+    async resolveNamespaceForUri(currentUri: vscode.Uri, returnDontInsert = false): Promise<string | undefined> {
+        try {
+            const composerFile = await this.findComposerFileByUri(currentUri, returnDontInsert)
+            const psr4 = await this.getComposerFileData(composerFile, returnDontInsert)
+
+            return await this.createNamespace(
+                currentUri,
+                {psrData: psr4, composerFilePath: composerFile},
+                returnDontInsert,
+            )
+        } catch {
+            if (this.config('useFolderTree')) {
+                return this.getFileDirFromPath(currentUri.path.replace(this.CWD, ''))
+                    .replace(/^\//gm, '')
+                    .replace(/\//g, '\\')
+            }
         }
     }
 
@@ -928,7 +941,7 @@ export class Resolver {
             currentRelativePath += '/'
         }
 
-        let namespaceBase: any = Object.keys(psr4)
+        const namespaceBase: any = Object.keys(psr4)
             .sort((a, b) => b.length - a.length)
             .find((k) => currentRelativePath.startsWith(psr4[k]))
 
@@ -940,8 +953,10 @@ export class Resolver {
             throw new Error()
         }
 
-        const baseDir = psr4[namespaceBase]
+        return this.buildNamespacePath(namespaceBase, psr4[namespaceBase], currentRelativePath)
+    }
 
+    buildNamespacePath(namespaceBase: string, baseDir: string, currentRelativePath: string): string {
         if (baseDir == currentRelativePath) {
             currentRelativePath = null
         } else {
@@ -953,24 +968,13 @@ export class Resolver {
 
         namespaceBase = namespaceBase.replace(/\\$/g, '')
 
-        if (!namespaceBase) {
-            if (!ignoreError) {
-                await this.showMessage('no namespace found for current file parent directory', true)
-            }
-
-            throw new Error()
-        }
-
-        let ns: any = null
         const namespaceBaseLower = namespaceBase.toLowerCase()
 
-        if (!currentRelativePath || currentRelativePath == namespaceBaseLower) { // dir already namespaced
-            ns = namespaceBase
-        } else { // add parent dir/s to base namespace
-            ns = `${namespaceBase}\\${currentRelativePath}`
+        if (!currentRelativePath || currentRelativePath == namespaceBaseLower) {
+            return namespaceBase
         }
 
-        return ns.replace(/\\{2,}/g, '\\')
+        return `${namespaceBase}\\${currentRelativePath}`.replace(/\\{2,}/g, '\\')
     }
 
     async import() {
