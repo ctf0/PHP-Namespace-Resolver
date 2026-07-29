@@ -31,6 +31,19 @@ export class Resolver {
         this.getPHPClassList()
     }
 
+    private getAllMatches(text: string, regex: RegExp): string[] {
+        const results: string[] = []
+        let match: RegExpExecArray | null
+
+        while ((match = regex.exec(text))) {
+            if (match[1]) {
+                results.push(match[1])
+            }
+        }
+
+        return results
+    }
+
     getFileClassesAndTraits(declarationLines: any): string[] {
         const text = this.EDITOR?.document.getText()
 
@@ -74,93 +87,29 @@ export class Resolver {
     }
 
     getInitializedWithNew(text: string): string[] {
-        const regex = /new (\\?[A-Z0-9][a-zA-Z0-9_\\]+)/gm
-        let matches: RegExpExecArray | null = null
-        const phpClasses: string[] = []
-
-        while ((matches = regex.exec(text))) {
-            if (matches[1]) {
-                phpClasses.push(matches[1])
-            }
-        }
-
-        return phpClasses
+        return this.getAllMatches(text, /new (\\?[A-Z0-9][a-zA-Z0-9_\\]+)/gm)
     }
 
     getFromStaticCalls(text: string): string[] {
-        const regex = /(\\?[A-Z0-9][a-zA-Z0-9_\\]+)::/gm
-        let matches: RegExpExecArray | null = null
-        const phpClasses: string[] = []
-
-        while ((matches = regex.exec(text))) {
-            if (matches[1]) {
-                phpClasses.push(matches[1])
-            }
-        }
-
-        return phpClasses
+        return this.getAllMatches(text, /(\\?[A-Z0-9][a-zA-Z0-9_\\]+)::/gm)
     }
 
     getFromInstanceofOperator(text: string): string[] {
-        const regex = /instanceof (\\?[A-Z0-9][a-zA-Z0-9_\\]+)/gm
-        let matches: RegExpExecArray | null = null
-        const phpClasses: string[] = []
-
-        while ((matches = regex.exec(text))) {
-            if (matches[1]) {
-                phpClasses.push(matches[1])
-            }
-        }
-
-        return phpClasses
+        return this.getAllMatches(text, /instanceof (\\?[A-Z0-9][a-zA-Z0-9_\\]+)/gm)
     }
 
     getFromTypeHints(text: string): string[] {
-        const regex = /(?<!\$)(\\?[A-Z0-9][a-zA-Z0-9_\\]+)[[<]/gm
-
-        let matches: RegExpExecArray | null = null
-        const phpClasses: string[] = []
-
-        while ((matches = regex.exec(text))) {
-            const txt = matches[1]
-
-            if (txt && !this.BUILT_IN_CLASSES.includes(txt)) {
-                phpClasses.push(txt)
-            }
-        }
-
-        return phpClasses
+        return this.getAllMatches(text, /(?<!\$)(\\?[A-Z0-9][a-zA-Z0-9_\\]+)[[<]/gm)
+            .filter((c) => !this.BUILT_IN_CLASSES.includes(c))
     }
 
     getFromReturnType(text: string): string[] {
-        const regex = /(?<=\):( )?)(\\?[A-Z0-9][a-zA-Z0-9_\\]+)/gm
-
-        let matches: RegExpExecArray | null = null
-        const phpClasses: string[] = []
-
-        while ((matches = regex.exec(text))) {
-            const txt = matches[1]
-
-            if (txt && !this.BUILT_IN_CLASSES.includes(txt)) {
-                phpClasses.push(txt)
-            }
-        }
-
-        return phpClasses
+        return this.getAllMatches(text, /(?<=\):( )?)(\\?[A-Z0-9][a-zA-Z0-9_\\]+)/gm)
+            .filter((c) => !this.BUILT_IN_CLASSES.includes(c))
     }
 
     getFromDocBlocks(text): string[] {
-        const regex = /(?<=@\b(return|throws|param) )(\\?[A-Z0-9][a-zA-Z0-9_\\]+)/gm
-        let matches: RegExpExecArray | null = null
-        const phpClasses: string[] = []
-
-        while ((matches = regex.exec(text))) {
-            if (matches[2]) {
-                phpClasses.push(matches[2])
-            }
-        }
-
-        return phpClasses
+        return this.getAllMatches(text, /(?<=@\b(?:return|throws|param) )(\\?[A-Z0-9][a-zA-Z0-9_\\]+)/gm)
     }
 
     /* Commands ----------------------------------------------------------------- */
@@ -613,21 +562,19 @@ export class Resolver {
         return parsedNamespaces
     }
 
-    pickClass(namespaces) {
-        return new Promise((resolve, reject) => {
-            if (namespaces.length === 1) {
-                // Only one namespace found so no need to show picker.
-                return resolve(namespaces[0])
-            }
+    async pickClass(namespaces) {
+        if (namespaces.length === 1) {
+            // Only one namespace found so no need to show picker.
+            return namespaces[0]
+        }
 
-            vscode.window.showQuickPick(namespaces).then((picked) => {
-                if (picked !== undefined) {
-                    return resolve(picked)
-                }
+        const picked = await vscode.window.showQuickPick(namespaces)
 
-                return reject()
-            })
-        })
+        if (picked !== undefined) {
+            return picked
+        }
+
+        throw new Error()
     }
 
     getFileNameFromPath(file) {
@@ -701,27 +648,13 @@ export class Resolver {
     }
 
     hasConflict(useStatements: any, resolving: string) {
-        for (const useStatement of useStatements) {
-            if (useStatement.text.endsWith(`\\${resolving}`)) {
-                return true
-            }
-
-            if (useStatement.text == resolving) {
-                return true
-            }
-        }
-
-        return false
+        return useStatements.some(
+            (u) => u.text.endsWith(`\\${resolving}`) || u.text === resolving
+        )
     }
 
     hasAliasConflict(useStatements: any, resolving: string) {
-        for (const useStatement of useStatements) {
-            if (useStatement.alias === resolving) {
-                return true
-            }
-        }
-
-        return false
+        return useStatements.some((u) => u.alias === resolving)
     }
 
     getDeclarations() {
