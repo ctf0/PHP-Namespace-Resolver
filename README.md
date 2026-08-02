@@ -1,7 +1,5 @@
 # PHP Namespace Resolver
 
-based on https://github.com/MehediDracula/PHP-Namespace-Resolver which seems abandoned
-
 ## Changes
 
 - apply pending PRs
